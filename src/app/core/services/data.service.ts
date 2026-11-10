@@ -32,8 +32,8 @@ import { formatDateTimeIST, getTodayDateStringIST } from './ist-date.utils';
   providedIn: 'root'
 })
 export class DataService {
-  // Use v3 prefix for private Host account + public employee registration system
-  private readonly STORAGE_PREFIX = '7clouds_v3_';
+  // Use v4 prefix for zero-mock clean state + custom User ID + profile photo uploads
+  private readonly STORAGE_PREFIX = '7clouds_v4_';
 
   private users$ = new BehaviorSubject<User[]>([]);
   private attendance$ = new BehaviorSubject<AttendanceRecord[]>([]);
@@ -52,8 +52,7 @@ export class DataService {
 
   private initializeData(): void {
     const storedUsers = this.getFromStorage<User[]>('users');
-    // If no v3 users found or old Host name was embedded in users, initialize clean staff directory
-    if (!storedUsers || storedUsers.some(u => u.name.includes('Anjalsh') || u.role === 'HOST' || (u.role as string) === 'super_admin')) {
+    if (!storedUsers) {
       this.resetToDefaults();
     } else {
       this.users$.next(storedUsers);
@@ -255,27 +254,47 @@ export class DataService {
 
   registerEmployee(data: {
     name: string;
+    username?: string;
     phone: string;
     designation: string;
     email: string;
     password: string;
+    avatar?: string;
   }): User {
     const cleanEmail = data.email.trim().toLowerCase();
     const cleanPhone = data.phone.trim();
+    const cleanUser = (data.username || '').trim();
     const users = this.users$.value;
 
-    // Check duplicate
+    // Check duplicate email
     if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
       throw new Error(`An account with email '${data.email}' is already registered.`);
     }
+    // Check duplicate phone
     if (users.some(u => u.phone === cleanPhone)) {
       throw new Error(`An account with phone number '${data.phone}' is already registered.`);
     }
 
-    const employeeId = this.generateNextEmployeeId();
+    // Check duplicate User ID if provided
+    let finalUserId: string;
+    if (cleanUser) {
+      if (cleanUser.length < 3) {
+        throw new Error('User ID must be at least 3 characters long.');
+      }
+      if (users.some(u => (u.username && u.username.toLowerCase() === cleanUser.toLowerCase()) || u.employeeId.toLowerCase() === cleanUser.toLowerCase())) {
+        throw new Error(`User ID '${cleanUser}' is already taken. Please choose another.`);
+      }
+      finalUserId = cleanUser;
+    } else {
+      finalUserId = this.generateNextEmployeeId();
+    }
+
+    const defaultAvatar = `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(data.name.trim())}&backgroundColor=111827,1f2937,0f172a`;
+
     const newUser: User = {
       id: 'user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-      employeeId,
+      employeeId: finalUserId,
+      username: finalUserId,
       name: data.name.trim(),
       email: cleanEmail,
       phone: cleanPhone,
@@ -287,10 +306,10 @@ export class DataService {
       passwordHash: hashPassword(data.password),
       registeredAt: formatDateTimeIST(new Date()),
       registeredViaPublicForm: true,
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      avatar: data.avatar || defaultAvatar,
       leaveBalances: { casual: 12, sick: 10, emergency: 5, total: 27 },
       skills: ['Workspace Operations'],
-      bio: 'Registered staff specialist at 7 Clouds Studio.'
+      bio: 'Registered staff member at 7 Clouds Studio.'
     };
 
     this.addUser(newUser);
@@ -300,7 +319,7 @@ export class DataService {
       id: 'notif-' + Date.now(),
       recipientId: 'all',
       title: 'New Registration Pending Approval',
-      message: `${newUser.name} (${newUser.designation}) registered and is awaiting Host approval.`,
+      message: `${newUser.name} (User ID: ${newUser.employeeId}, ${newUser.designation}) registered and is awaiting Host approval.`,
       createdAt: formatDateTimeIST(new Date()),
       isRead: false,
       type: 'system',

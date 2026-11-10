@@ -23,7 +23,8 @@ export interface LeaveBalances {
 
 export interface User {
   id: string;
-  employeeId: string;
+  employeeId: string; // User ID / Employee ID created by employee or system
+  username?: string; // Custom login User ID chosen during registration
   name: string;
   email: string;
   avatar: string;

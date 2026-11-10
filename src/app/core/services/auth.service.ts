@@ -30,7 +30,7 @@ export const PRIVATE_HOST_USER: User = {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly CURRENT_USER_KEY = '7clouds_v3_session';
+  private readonly CURRENT_USER_KEY = '7clouds_v4_session';
   private currentUserSubject = new BehaviorSubject<User | null>(null);
 
   currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
@@ -160,13 +160,17 @@ export class AuthService {
 
     const users = this.dataService.getUsersSnapshot();
     const user = users.find(
-      u => u.email.toLowerCase() === clean || u.phone.trim() === clean
+      u =>
+        u.email.toLowerCase() === clean ||
+        u.phone.trim() === clean ||
+        u.employeeId.toLowerCase() === clean ||
+        (u.username && u.username.toLowerCase() === clean)
     );
 
     if (!user) {
       return {
         success: false,
-        message: 'No registered employee account found with this email or phone number. Click Create Account to register.'
+        message: 'No registered account found with this User ID, email or phone number. Click Create Account to register.'
       };
     }
 

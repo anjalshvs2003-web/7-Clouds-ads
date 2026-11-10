@@ -286,10 +286,45 @@ import { Subscription } from 'rxjs';
       <app-modal
         [isOpen]="isModalOpen"
         [title]="editingUserId ? 'Edit Staff Account' : 'Onboard New Staff Member'"
-        subtitle="Manage designation, contact number, role permissions and account status"
+        subtitle="Manage User ID, designation, photo, contact and role permissions"
         (close)="isModalOpen = false"
       >
         <form (ngSubmit)="saveStaffForm()" class="space-y-4 text-xs">
+          <!-- Profile Photo Upload in Modal -->
+          <div>
+            <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
+              Profile Photo
+            </label>
+            <div class="flex items-center gap-3 p-3 rounded-2xl bg-surface-secondary/70 border border-surface-border">
+              <div class="w-12 h-12 rounded-2xl overflow-hidden bg-surface-tertiary border border-surface-border shrink-0">
+                <img
+                  [src]="formData.avatar"
+                  alt="Staff Avatar"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+
+              <div class="flex-1">
+                <input
+                  type="file"
+                  #modalPhotoFile
+                  accept="image/*"
+                  (change)="onModalPhotoChange($event)"
+                  class="hidden"
+                />
+                <button
+                  type="button"
+                  (click)="modalPhotoFile.click()"
+                  class="px-3 py-1.5 rounded-xl bg-surface-tertiary hover:bg-electric/20 text-white text-[11px] font-semibold border border-surface-border transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <app-icon name="camera" [size]="14"></app-icon>
+                  <span>Upload Photo</span>
+                </button>
+                <span class="text-[10px] text-text-muted ml-2">PNG, JPG or WEBP</span>
+              </div>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
@@ -300,11 +335,27 @@ import { Subscription } from 'rxjs';
                 [(ngModel)]="formData.name"
                 name="name"
                 required
-                placeholder="e.g. Adithya Kumar"
+                placeholder="e.g. Rahul Sharma"
                 class="input-field"
               />
             </div>
 
+            <div>
+              <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
+                User ID *
+              </label>
+              <input
+                type="text"
+                [(ngModel)]="formData.userId"
+                name="userId"
+                required
+                placeholder="e.g. rahul.editor or 7C-001"
+                class="input-field font-mono"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
                 Phone Number *
@@ -315,6 +366,19 @@ import { Subscription } from 'rxjs';
                 name="phone"
                 required
                 placeholder="e.g. 9847921883"
+                class="input-field font-mono"
+              />
+            </div>
+
+            <div>
+              <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
+                Company Email Address
+              </label>
+              <input
+                type="email"
+                [(ngModel)]="formData.email"
+                name="email"
+                placeholder="name@7clouds.studio"
                 class="input-field font-mono"
               />
             </div>
@@ -335,16 +399,17 @@ import { Subscription } from 'rxjs';
               />
             </div>
 
-            <div>
+            <div *ngIf="!editingUserId">
               <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
-                Company Email Address
+                Account Password *
               </label>
               <input
-                type="email"
-                [(ngModel)]="formData.email"
-                name="email"
-                placeholder="name@7clouds.studio"
-                class="input-field font-mono"
+                type="password"
+                [(ngModel)]="formData.password"
+                name="password"
+                required
+                placeholder="Min 6 characters"
+                class="input-field"
               />
             </div>
           </div>
@@ -370,19 +435,6 @@ import { Subscription } from 'rxjs';
                 <option value="inactive">Inactive / Deactivated</option>
               </select>
             </div>
-          </div>
-
-          <div>
-            <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
-              Avatar Image URL
-            </label>
-            <input
-              type="url"
-              [(ngModel)]="formData.avatar"
-              name="avatar"
-              placeholder="https://images.unsplash.com/..."
-              class="input-field font-mono"
-            />
           </div>
 
           <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
@@ -418,9 +470,11 @@ export class EmployeesComponent implements OnInit, OnDestroy {
 
   formData = {
     name: '',
+    userId: '',
     phone: '',
     designation: '',
     email: '',
+    password: '',
     role: 'EMPLOYEE' as UserRole,
     status: 'active' as AccountStatus,
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
@@ -452,6 +506,22 @@ export class EmployeesComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+  }
+
+  onModalPhotoChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        this.toastService.error('Photo must be under 5MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.formData.avatar = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   isHrRole(role: string): boolean {
@@ -495,11 +565,14 @@ export class EmployeesComponent implements OnInit, OnDestroy {
 
   openAddModal(): void {
     this.editingUserId = null;
+    const nextId = this.dataService.generateNextEmployeeId();
     this.formData = {
       name: '',
+      userId: nextId,
       phone: '',
       designation: '',
       email: '',
+      password: '',
       role: 'EMPLOYEE',
       status: 'active',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
@@ -511,9 +584,11 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     this.editingUserId = user.id;
     this.formData = {
       name: user.name,
+      userId: user.employeeId,
       phone: user.phone,
       designation: user.designation,
       email: user.email,
+      password: '',
       role: user.role,
       status: user.status,
       avatar: user.avatar
@@ -522,8 +597,8 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   }
 
   saveStaffForm(): void {
-    if (!this.formData.name.trim() || !this.formData.phone.trim() || !this.formData.designation.trim()) {
-      this.toastService.error('Please enter name, phone number and designation.');
+    if (!this.formData.name.trim() || !this.formData.phone.trim() || !this.formData.designation.trim() || !this.formData.userId.trim()) {
+      this.toastService.error('Please enter name, User ID, phone number and designation.');
       return;
     }
 
@@ -539,6 +614,8 @@ export class EmployeesComponent implements OnInit, OnDestroy {
         const updated: User = {
           ...existing,
           name: this.formData.name.trim(),
+          employeeId: this.formData.userId.trim(),
+          username: this.formData.userId.trim(),
           phone: this.formData.phone.trim(),
           designation: this.formData.designation.trim(),
           email,
@@ -550,25 +627,26 @@ export class EmployeesComponent implements OnInit, OnDestroy {
         this.toastService.success(`Updated ${updated.name}'s profile.`);
       }
     } else {
-      const nextId = this.dataService.generateNextEmployeeId();
-      const newStaff: User = {
-        id: 'user-' + Date.now(),
-        employeeId: nextId,
+      if (!this.formData.password || this.formData.password.length < 6) {
+        this.toastService.error('Password must be at least 6 characters.');
+        return;
+      }
+
+      const newStaff = this.dataService.registerEmployee({
         name: this.formData.name.trim(),
+        username: this.formData.userId.trim(),
         phone: this.formData.phone.trim(),
         designation: this.formData.designation.trim(),
         email,
-        role: this.formData.role,
-        status: this.formData.status,
-        department: 'Creative Studio',
-        joiningDate: new Date().toISOString().split('T')[0],
-        avatar: this.formData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        leaveBalances: { casual: 12, sick: 10, emergency: 5, total: 27 },
-        skills: ['Workspace Operations'],
-        bio: 'Studio team member at 7 Clouds.'
-      };
-      this.dataService.addUser(newStaff);
-      this.toastService.success(`Added ${newStaff.name} (ID: ${newStaff.employeeId})!`);
+        password: this.formData.password,
+        avatar: this.formData.avatar
+      });
+
+      // If created by Host/HR directly, set active status
+      if (this.formData.status === 'active') {
+        this.dataService.approveRegistration(newStaff.id);
+      }
+      this.toastService.success(`Added ${newStaff.name} (User ID: ${newStaff.employeeId})!`);
     }
 
     this.isModalOpen = false;

@@ -91,13 +91,13 @@ import { User } from '../../../core/models';
           <div *ngIf="activeTab === 'login'">
             <div class="mb-4">
               <h2 class="text-sm font-bold text-white">Employee Sign In</h2>
-              <p class="text-[11px] text-text-muted mt-0.5">Enter your company email or phone number to access your workspace.</p>
+              <p class="text-[11px] text-text-muted mt-0.5">Enter your User ID, company email, or phone number to sign in.</p>
             </div>
 
             <form (ngSubmit)="handleLogin()" class="space-y-4 text-xs">
               <div>
                 <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-2 font-mono text-[10px]">
-                  Company Email or Phone Number
+                  User ID, Email or Phone Number
                 </label>
                 <div class="relative">
                   <input
@@ -105,7 +105,7 @@ import { User } from '../../../core/models';
                     [(ngModel)]="loginIdentifier"
                     name="loginIdentifier"
                     required
-                    placeholder="e.g. adithya@7clouds.studio or 8078415501"
+                    placeholder="Enter User ID, email or phone..."
                     class="input-field pl-10 text-xs font-mono"
                   />
                   <app-icon name="user" [size]="16" extraClass="absolute left-3.5 top-3 text-text-muted"></app-icon>
@@ -117,7 +117,7 @@ import { User } from '../../../core/models';
                   <label class="block text-text-secondary font-semibold uppercase tracking-wider font-mono text-[10px]">
                     Password
                   </label>
-                  <span class="text-[10px] text-text-muted">Enter account password</span>
+                  <span class="text-[10px] text-text-muted">Enter created password</span>
                 </div>
                 <div class="relative">
                   <input
@@ -160,11 +160,53 @@ import { User } from '../../../core/models';
           <!-- ================= TAB 2: CREATE ACCOUNT (REGISTRATION) ================= -->
           <div *ngIf="activeTab === 'register'">
             <div class="mb-4">
-              <h2 class="text-sm font-bold text-white">Public Employee Registration</h2>
-              <p class="text-[11px] text-text-muted mt-0.5">Submit your details to create an account. Requires Host approval before login.</p>
+              <h2 class="text-sm font-bold text-white">Create Employee Account</h2>
+              <p class="text-[11px] text-text-muted mt-0.5">
+                Set up your personal User ID, password, and profile photo. Requires Host approval before login.
+              </p>
             </div>
 
             <form (ngSubmit)="handleRegister()" class="space-y-3.5 text-xs">
+              <!-- Profile Photo Upload -->
+              <div>
+                <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-2 font-mono text-[10px]">
+                  Profile Photo (Optional)
+                </label>
+                <div class="flex items-center gap-4 p-3 rounded-2xl bg-surface-secondary/50 border border-surface-border">
+                  <div class="relative w-14 h-14 rounded-2xl overflow-hidden bg-surface-tertiary border-2 border-surface-border flex items-center justify-center shrink-0">
+                    <img
+                      *ngIf="regForm.avatarPreview"
+                      [src]="regForm.avatarPreview"
+                      alt="Avatar Preview"
+                      class="w-full h-full object-cover"
+                    />
+                    <app-icon *ngIf="!regForm.avatarPreview" name="user" [size]="24" extraClass="text-text-muted"></app-icon>
+                  </div>
+
+                  <div class="flex-1">
+                    <label class="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-tertiary hover:bg-electric/20 border border-surface-border hover:border-electric/40 text-white text-[11px] font-semibold transition-colors">
+                      <app-icon name="camera" [size]="14"></app-icon>
+                      <span>{{ regForm.avatarPreview ? 'Change Photo' : 'Upload Photo' }}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        (change)="onPhotoSelected($event)"
+                        class="hidden"
+                      />
+                    </label>
+                    <button
+                      *ngIf="regForm.avatarPreview"
+                      type="button"
+                      (click)="regForm.avatarPreview = ''"
+                      class="ml-2 text-[10px] text-rose-400 hover:underline cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                    <p class="text-[10px] text-text-muted mt-1">PNG, JPG or WEBP under 5MB</p>
+                  </div>
+                </div>
+              </div>
+
               <!-- Full Name -->
               <div>
                 <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
@@ -183,10 +225,31 @@ import { User } from '../../../core/models';
                 </div>
               </div>
 
+              <!-- Custom User ID -->
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="block text-text-secondary font-semibold uppercase tracking-wider font-mono text-[10px]">
+                    2. Choose User ID *
+                  </label>
+                  <span class="text-[10px] text-text-muted">Unique username for login</span>
+                </div>
+                <div class="relative">
+                  <input
+                    type="text"
+                    [(ngModel)]="regForm.username"
+                    name="username"
+                    required
+                    placeholder="e.g. rahul.editor or 7C-001"
+                    class="input-field pl-10 text-xs font-mono"
+                  />
+                  <app-icon name="hash" [size]="16" extraClass="absolute left-3.5 top-3 text-text-muted"></app-icon>
+                </div>
+              </div>
+
               <!-- Phone Number -->
               <div>
                 <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
-                  2. Phone Number *
+                  3. Phone Number *
                 </label>
                 <div class="relative">
                   <input
@@ -204,7 +267,7 @@ import { User } from '../../../core/models';
               <!-- Designation -->
               <div>
                 <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
-                  3. Designation *
+                  4. Designation *
                 </label>
                 <div class="relative">
                   <select
@@ -214,10 +277,11 @@ import { User } from '../../../core/models';
                     class="input-field pl-10 text-xs bg-surface-secondary text-white appearance-none cursor-pointer"
                   >
                     <option value="" disabled selected>Select your designation...</option>
+                    <option value="Senior Video Editor">Senior Video Editor</option>
                     <option value="Video Editor">Video Editor</option>
+                    <option value="Junior Video Editor">Junior Video Editor</option>
                     <option value="Graphics Designer">Graphics Designer</option>
                     <option value="Motion Designer">Motion Designer</option>
-                    <option value="Junior Video Editor">Junior Video Editor</option>
                     <option value="Digital Marketer">Digital Marketer</option>
                     <option value="Photographer / Cinematographer">Photographer / Cinematographer</option>
                     <option value="Content Creator">Content Creator</option>
@@ -230,7 +294,7 @@ import { User } from '../../../core/models';
               <!-- Email Address -->
               <div>
                 <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
-                  4. Company Email Address *
+                  5. Company Email Address *
                 </label>
                 <div class="relative">
                   <input
@@ -249,7 +313,7 @@ import { User } from '../../../core/models';
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
-                    5. Password *
+                    6. Create Password *
                   </label>
                   <div class="relative">
                     <input
@@ -266,7 +330,7 @@ import { User } from '../../../core/models';
 
                 <div>
                   <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5 font-mono text-[10px]">
-                    6. Confirm Password *
+                    7. Confirm Password *
                   </label>
                   <div class="relative">
                     <input
@@ -287,7 +351,7 @@ import { User } from '../../../core/models';
                 <app-icon name="info" [size]="16" extraClass="text-violet-400 shrink-0 mt-0.5"></app-icon>
                 <div>
                   <span class="text-violet-300 font-bold">Host Approval Protocol:</span>
-                  Upon registration, your account status is set to <strong class="text-amber-300 font-mono">PENDING APPROVAL</strong>. The Host must approve your profile before you can log in.
+                  Your account status is set to <strong class="text-amber-300 font-mono">PENDING APPROVAL</strong>. The Host must approve your User ID before you can log in.
                 </div>
               </div>
 
@@ -299,7 +363,7 @@ import { User } from '../../../core/models';
                 <span *ngIf="!loading">Submit Registration Request</span>
                 <span *ngIf="loading" class="flex items-center justify-center gap-2">
                   <span class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                  <span>Submitting Registration...</span>
+                  <span>Creating Account...</span>
                 </span>
               </button>
             </form>
@@ -329,17 +393,19 @@ export class LoginComponent {
   successMessage: string = '';
 
   // Login form state
-  loginIdentifier: string = 'adithya@7clouds.studio';
-  loginPassword: string = 'password123';
+  loginIdentifier: string = '';
+  loginPassword: string = '';
 
   // Registration form state
   regForm = {
     name: '',
+    username: '',
     phone: '',
     designation: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    avatarPreview: ''
   };
 
   constructor(
@@ -349,9 +415,25 @@ export class LoginComponent {
     private router: Router
   ) {}
 
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        this.errorMessage = 'Profile photo must be under 5MB.';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.regForm.avatarPreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   handleLogin(): void {
     if (!this.loginIdentifier.trim()) {
-      this.errorMessage = 'Please enter your company email or phone number.';
+      this.errorMessage = 'Please enter your User ID, company email or phone number.';
       return;
     }
     if (!this.loginPassword.trim()) {
@@ -377,10 +459,18 @@ export class LoginComponent {
   }
 
   handleRegister(): void {
-    const { name, phone, designation, email, password, confirmPassword } = this.regForm;
+    const { name, username, phone, designation, email, password, confirmPassword, avatarPreview } = this.regForm;
 
     if (!name.trim()) {
       this.errorMessage = 'Please enter your full name.';
+      return;
+    }
+    if (!username.trim()) {
+      this.errorMessage = 'Please choose a User ID.';
+      return;
+    }
+    if (username.trim().length < 3) {
+      this.errorMessage = 'User ID must be at least 3 characters long.';
       return;
     }
     if (!phone.trim()) {
@@ -411,24 +501,28 @@ export class LoginComponent {
       try {
         const newUser = this.dataService.registerEmployee({
           name,
+          username: username.trim(),
           phone,
           designation,
           email,
-          password
+          password,
+          avatar: avatarPreview || undefined
         });
 
         this.loading = false;
-        this.successMessage = `Your account request for ${newUser.name} (Employee ID: ${newUser.employeeId}) has been registered and is waiting for Host approval. You will receive access once the Host approves your application.`;
-        this.toastService.success(`Account submitted! ID: ${newUser.employeeId} is pending Host approval.`);
+        this.successMessage = `Your account request for ${newUser.name} with User ID "${newUser.employeeId}" has been registered and is waiting for Host approval. Once approved by the Host, you will be able to log in with this User ID and your password.`;
+        this.toastService.success(`Account submitted! User ID: ${newUser.employeeId} is pending Host approval.`);
 
         // Reset registration form
         this.regForm = {
           name: '',
+          username: '',
           phone: '',
           designation: '',
           email: '',
           password: '',
-          confirmPassword: ''
+          confirmPassword: '',
+          avatarPreview: ''
         };
       } catch (err: any) {
         this.loading = false;

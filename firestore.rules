@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.role == 'admin' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // 1. Users collection
+    match /users/{userId} {
+      // Any authenticated user can read basic employee info (for assignment, directory, roster)
+      allow read: if isAuthenticated();
+      // Only Admin / HR can create or toggle status / change roles
+      allow create, delete: if isAdmin();
+      // Employees can update permitted profile fields (phone, avatar, bio, skills, emergency contact)
+      // but cannot change role, employeeId, or leaveBalances
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'employeeId', 'status', 'leaveBalances', 'joiningDate'])
+      );
+    }
+
+    // 2. Attendance collection
+    match /attendance/{attendanceId} {
+      // Employees can read their own attendance, Admins can read all
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      // Employees can check-in for themselves
+      allow create: if isAuthenticated() && (
+        isOwner(request.resource.data.userId) || isAdmin()
+      );
+      // Employees can check-out their active session; Admin can correct with audit log
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.userId) && resource.data.checkOutTime == null) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 3. Leave Requests collection
+    match /leaves/{leaveId} {
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      // Employees can submit pending leave requests for themselves
+      allow create: if isAuthenticated() &&
+        isOwner(request.resource.data.userId) &&
+        request.resource.data.status == 'Pending';
+      // Employees can cancel their own pending requests; Admins can approve/reject
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.userId) && resource.data.status == 'Pending' && request.resource.data.status == 'Cancelled') ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 4. Tasks collection
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      // Admins can create tasks for anyone; Employees can create personal tasks
+      allow create: if isAuthenticated() && (
+        isAdmin() || isOwner(request.resource.data.assignedTo)
+      );
+      // Assigned employee can update progress, actualHours, status, timer; Admin can edit all
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        isOwner(resource.data.assignedTo)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // 5. Daily Work Reports collection
+    match /reports/{reportId} {
+      allow read: if isAdmin() || isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isAdmin() || isOwner(resource.data.userId);
+      allow delete: if isAdmin();
+    }
+
+    // 6. Announcements collection
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 7. Company Holidays collection
+    match /holidays/{holidayId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 8. Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (
+        resource.data.recipientId == 'all' ||
+        isOwner(resource.data.recipientId) ||
+        isAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.recipientId) ||
+        resource.data.recipientId == 'all' ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin() || isOwner(resource.data.recipientId);
+    }
+
+    // 9. Audit Logs collection (Immutable: write-only by backend/admin, cannot be deleted)
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Immutable audit trail
+    }
+
+    // 10. Studio Settings collection
+    match /settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

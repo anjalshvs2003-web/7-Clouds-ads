@@ -1,0 +1,17 @@
+{
+  "name": "7 Clouds · Creative Studio Workspace",
+  "short_name": "7 Clouds",
+  "description": "Futuristic Employee Management, Attendance & Task Workspace",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080B14",
+  "theme_color": "#080B14",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

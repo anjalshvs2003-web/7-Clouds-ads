@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(8, 11, 20, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(146, 156, 179, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(69, 104, 255, 0.45);
+}
+
+/* Base Body Styles */
+html, body {
+  height: 100%;
+  background-color: #080B14;
+  color: #F5F6FA;
+}
+
+/* Futuristic Glass Card Utility */
+@layer components {
+  .glass-panel {
+    background: rgba(17, 24, 42, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 1rem;
+  }
+
+  .glass-panel-interactive {
+    background: rgba(17, 24, 42, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 1rem;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-panel-interactive:hover {
+    border-color: rgba(69, 104, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(69, 104, 255, 0.15);
+  }
+
+  .glow-border-blue {
+    position: relative;
+  }
+  .glow-border-blue::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(135deg, rgba(69, 104, 255, 0.4), transparent, rgba(120, 85, 232, 0.3));
+    border-radius: inherit;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .gradient-brand {
+    background: linear-gradient(135deg, #4568FF 0%, #7855E8 50%, #A48AFF 100%);
+  }
+
+  .gradient-brand-text {
+    background: linear-gradient(135deg, #FFFFFF 20%, #A48AFF 60%, #4568FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .gradient-subtle {
+    background: radial-gradient(circle at 50% 0%, rgba(69, 104, 255, 0.12), transparent 70%);
+  }
+
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-white
+           bg-gradient-to-r from-electric to-violet shadow-glow-sm hover:shadow-glow-electric
+           transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-text-primary
+           bg-surface-secondary/80 hover:bg-surface-tertiary border border-surface-border hover:border-surface-border-bright
+           transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-text-secondary
+           hover:text-text-primary hover:bg-white/5 transition-colors cursor-pointer;
+  }
+
+  .input-field {
+    @apply w-full bg-surface-secondary/60 border border-surface-border rounded-xl px-4 py-2.5 text-text-primary
+           placeholder-text-muted focus:outline-none focus:border-electric focus:ring-1 focus:ring-electric/50
+           transition-all duration-150 text-sm;
+  }
+
+  .badge-status {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold;
+  }
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* Print Styles for Reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .glass-panel {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    color: black !important;
+  }
+}

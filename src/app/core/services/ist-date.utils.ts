@@ -46,8 +46,24 @@ export function getCurrentISTTimeString(): string {
 
 export function formatTimeIST(isoStr?: string): string {
   if (!isoStr) return '--:--';
-  const d = new Date(isoStr);
-  if (isNaN(d.getTime())) return '--:--';
+  const trimmed = isoStr.trim();
+  if (/^\d{1,2}:\d{2}(\s*(AM|PM))?$/i.test(trimmed)) {
+    return trimmed;
+  }
+  const d = new Date(trimmed);
+  if (isNaN(d.getTime())) {
+    // If it's something like "2026-11-10 09:30:00"
+    const parsed = new Date(trimmed.replace(' ', 'T'));
+    if (!isNaN(parsed.getTime())) {
+      return new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }).format(parsed);
+    }
+    return '--:--';
+  }
   return new Intl.DateTimeFormat('en-IN', {
     timeZone: 'Asia/Kolkata',
     hour: '2-digit',

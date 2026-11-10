@@ -344,12 +344,12 @@ import { User } from '../../../core/models';
                 </div>
               </div>
 
-              <!-- Approval Notice -->
-              <div class="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-[11px] text-text-secondary flex items-start gap-2.5">
-                <app-icon name="info" [size]="16" extraClass="text-violet-400 shrink-0 mt-0.5"></app-icon>
+              <!-- Activation Notice -->
+              <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-text-secondary flex items-start gap-2.5">
+                <app-icon name="check-circle" [size]="16" extraClass="text-emerald-400 shrink-0 mt-0.5"></app-icon>
                 <div>
-                  <span class="text-violet-300 font-bold">Host Approval Protocol:</span>
-                  Your account status is set to <strong class="text-amber-300 font-mono">PENDING APPROVAL</strong>. The Host must approve your User ID before you can log in.
+                  <span class="text-emerald-300 font-bold">Instant Account Activation:</span>
+                  Your account is activated immediately upon submission so you can sign in right away with your chosen User ID and password.
                 </div>
               </div>
 
@@ -358,7 +358,7 @@ import { User } from '../../../core/models';
                 [disabled]="loading"
                 class="w-full btn-primary py-3 text-xs font-bold tracking-wide mt-2 cursor-pointer flex items-center justify-center gap-2"
               >
-                <span *ngIf="!loading">Submit Registration Request</span>
+                <span *ngIf="!loading">Create Employee Account</span>
                 <span *ngIf="loading" class="flex items-center justify-center gap-2">
                   <span class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
                   <span>Creating Account...</span>
@@ -504,8 +504,8 @@ export class LoginComponent {
         });
 
         this.loading = false;
-        this.successMessage = `Your account request for ${newUser.name} with User ID "${newUser.employeeId}" has been registered and is waiting for Host approval. Once approved by the Host, you will be able to log in with this User ID and your password.`;
-        this.toastService.success(`Account submitted! User ID: ${newUser.employeeId} is pending Host approval.`);
+        this.successMessage = `Account for ${newUser.name} created successfully! You can now sign in immediately using your User ID "${newUser.employeeId}" (or email) and your password.`;
+        this.toastService.success(`Account created! User ID: ${newUser.employeeId}`);
 
         // Reset registration form
         this.regForm = {

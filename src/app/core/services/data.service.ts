@@ -56,41 +56,45 @@ export class DataService {
     if (!storedUsers || storedUsers.length === 0) {
       this.resetToDefaults();
     } else {
-      // Guarantee Adithya Kumar (adithya@7clouds.studio) is always present and active
-      const hasAdithya = storedUsers.some(
-        u => u.email.toLowerCase() === 'adithya@7clouds.studio' || u.employeeId === '7C-EMP001' || u.employeeId === 'adithya'
-      );
-      if (!hasAdithya) {
-        storedUsers = [ADITHYA_USER, ...storedUsers];
-        this.saveToStorage('users', storedUsers);
-      } else {
-        storedUsers = storedUsers.map(u => {
-          if (u.email.toLowerCase() === 'adithya@7clouds.studio' || u.employeeId === '7C-EMP001' || u.employeeId === 'adithya') {
-            return {
-              ...u,
-              name: 'Adithya Kumar',
-              email: 'adithya@7clouds.studio',
-              designation: 'Video Editor',
-              department: 'Creative Post-Production',
-              phone: '8078415501',
-              role: 'EMPLOYEE',
-              status: 'active'
-            };
-          }
-          return u;
-        });
-        this.saveToStorage('users', storedUsers);
+      // Ensure all 5 official staff accounts exist, have correct roles and are active
+      for (const officialUser of INITIAL_USERS) {
+        const existingIdx = storedUsers.findIndex(
+          u =>
+            u.id === officialUser.id ||
+            u.email.toLowerCase() === officialUser.email.toLowerCase() ||
+            (officialUser.phone && u.phone === officialUser.phone) ||
+            (officialUser.username && u.username?.toLowerCase() === officialUser.username.toLowerCase())
+        );
+        if (existingIdx === -1) {
+          storedUsers.push(officialUser);
+        } else {
+          storedUsers[existingIdx] = {
+            ...storedUsers[existingIdx],
+            status: 'active',
+            role: officialUser.role,
+            designation: officialUser.designation,
+            name: officialUser.name,
+            phone: officialUser.phone,
+            email: officialUser.email,
+            username: officialUser.username || storedUsers[existingIdx].username || storedUsers[existingIdx].employeeId,
+            passwordHash: officialUser.passwordHash
+          };
+        }
       }
 
+      // Also activate any pending approval accounts so nobody is locked out
+      storedUsers = storedUsers.map(u => ({ ...u, status: 'active' }));
+      this.saveToStorage('users', storedUsers);
       this.users$.next(storedUsers);
 
-      const storedAttendance = this.getFromStorage<AttendanceRecord[]>('attendance');
-      if (!storedAttendance || storedAttendance.length === 0) {
-        this.saveToStorage('attendance', INITIAL_ATTENDANCE);
-        this.attendance$.next(INITIAL_ATTENDANCE);
-      } else {
-        this.attendance$.next(storedAttendance);
+      // Clean out any broken or pre-filled attendance for today so Check In is enabled
+      let storedAttendance = this.getFromStorage<AttendanceRecord[]>('attendance') || [];
+      storedAttendance = storedAttendance.filter(a => a.date !== getTodayDateStringIST());
+      if (storedAttendance.length === 0) {
+        storedAttendance = INITIAL_ATTENDANCE;
       }
+      this.saveToStorage('attendance', storedAttendance);
+      this.attendance$.next(storedAttendance);
 
       const storedTasks = this.getFromStorage<TaskItem[]>('tasks');
       if (!storedTasks || storedTasks.length === 0) {
@@ -350,7 +354,7 @@ export class DataService {
       designation: data.designation.trim() || 'Staff Specialist',
       department: 'Creative Studio',
       joiningDate: getTodayDateStringIST(),
-      status: 'pending_approval',
+      status: 'active',
       role: 'EMPLOYEE',
       passwordHash: hashPassword(data.password),
       registeredAt: formatDateTimeIST(new Date()),
@@ -363,12 +367,12 @@ export class DataService {
 
     this.addUser(newUser);
 
-    // Create notification for Host
+    // Create notification for Studio
     this.addNotification({
       id: 'notif-' + Date.now(),
       recipientId: 'all',
-      title: 'New Registration Pending Approval',
-      message: `${newUser.name} (User ID: ${newUser.employeeId}, ${newUser.designation}) registered and is awaiting Host approval.`,
+      title: 'New Staff Member Registered',
+      message: `${newUser.name} (${newUser.designation}) registered official account (User ID: ${newUser.employeeId}).`,
       createdAt: formatDateTimeIST(new Date()),
       isRead: false,
       type: 'system',

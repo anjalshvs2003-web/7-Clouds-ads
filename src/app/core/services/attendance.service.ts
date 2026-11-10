@@ -103,9 +103,13 @@ export class AttendanceService {
     }
 
     const now = new Date();
-    const checkIn = new Date(record.checkInTime!);
-    const diffMs = now.getTime() - checkIn.getTime();
-    const hours = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10;
+    let checkIn = new Date(record.checkInTime!);
+    if (isNaN(checkIn.getTime())) {
+      checkIn = new Date(`${getTodayDateStringIST()}T${record.checkInTime!}`);
+    }
+    const diffMs = isNaN(checkIn.getTime()) ? 0 : now.getTime() - checkIn.getTime();
+    let hours = Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10;
+    if (isNaN(hours) || hours <= 0) hours = 0.5;
 
     const settings = this.dataService.getSettingsSnapshot();
     let status = record.status;
@@ -194,9 +198,24 @@ export class AttendanceService {
 
   calculateLiveHours(checkInTimeStr?: string, checkOutTimeStr?: string): number {
     if (!checkInTimeStr) return 0;
-    const start = new Date(checkInTimeStr).getTime();
-    const end = checkOutTimeStr ? new Date(checkOutTimeStr).getTime() : Date.now();
+    let start = new Date(checkInTimeStr).getTime();
+    if (isNaN(start)) {
+      start = new Date(`${getTodayDateStringIST()}T${checkInTimeStr}`).getTime();
+    }
+    if (isNaN(start)) return 0;
+
+    let end = Date.now();
+    if (checkOutTimeStr) {
+      let parsedEnd = new Date(checkOutTimeStr).getTime();
+      if (isNaN(parsedEnd)) {
+        parsedEnd = new Date(`${getTodayDateStringIST()}T${checkOutTimeStr}`).getTime();
+      }
+      if (!isNaN(parsedEnd)) {
+        end = parsedEnd;
+      }
+    }
     const diffHours = (end - start) / (1000 * 60 * 60);
-    return Math.max(0, Math.round(diffHours * 10) / 10);
+    const result = Math.max(0, Math.round(diffHours * 10) / 10);
+    return isNaN(result) ? 0 : result;
   }
 }

@@ -65,6 +65,6 @@ export class AppComponent implements OnInit {
   }
 
   private checkRoute(url: string): void {
-    this.isLoginPage = url.includes('/login');
+    this.isLoginPage = url.includes('/login') || url.includes('/host-portal');
   }
 }

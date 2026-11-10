@@ -257,6 +257,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   canInstallPwa = false;
 
   private subs: Subscription[] = [];
+  private attendanceSub?: Subscription;
 
   constructor(
     private authService: AuthService,
@@ -272,6 +273,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.isHost = this.authService.isHost();
         if (u) {
           this.loadTodayAttendance(u.id);
+        } else {
+          this.todayRecord = undefined;
+          if (this.attendanceSub) this.attendanceSub.unsubscribe();
         }
       }),
       this.pwaService.canInstall$.subscribe(can => {
@@ -281,15 +285,17 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.attendanceSub) this.attendanceSub.unsubscribe();
     this.subs.forEach(s => s.unsubscribe());
   }
 
   private loadTodayAttendance(userId: string): void {
-    this.subs.push(
-      this.attendanceService.getTodayRecord(userId).subscribe(record => {
-        this.todayRecord = record;
-      })
-    );
+    if (this.attendanceSub) {
+      this.attendanceSub.unsubscribe();
+    }
+    this.attendanceSub = this.attendanceService.getTodayRecord(userId).subscribe(record => {
+      this.todayRecord = record;
+    });
   }
 
   installPwa(): void {

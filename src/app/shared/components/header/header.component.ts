@@ -1,11 +1,12 @@
 import { Component, EventEmitter, OnInit, OnDestroy, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { IconComponent } from '../icon/icon.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DataService } from '../../../core/services/data.service';
 import { PwaService } from '../../../core/services/pwa.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { User, NotificationItem } from '../../../core/models';
 import { getCurrentISTTimeString, formatTimeIST } from '../../../core/services/ist-date.utils';
 import { Subscription } from 'rxjs';
@@ -226,7 +227,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private dataService: DataService,
     private notifService: NotificationService,
-    private pwaService: PwaService
+    private pwaService: PwaService,
+    private toastService: ToastService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -264,8 +267,19 @@ export class HeaderComponent implements OnInit, OnDestroy {
   switchUser(userId: string): void {
     const user = this.allUsers.find(u => u.id === userId && u.status === 'active');
     if (user) {
-      localStorage.setItem('7clouds_v3_session', user.id);
-      window.location.reload();
+      this.authService.switchUser(user.id);
+      this.showUserMenu = false;
+      this.toastService.success(`Switched active session to ${user.name}`);
+      if (
+        user.role === 'HOST' ||
+        (user.role as string) === 'super_admin' ||
+        user.role === 'HR ADMIN' ||
+        (user.role as string) === 'hr_admin'
+      ) {
+        this.router.navigate(['/hr-dashboard']);
+      } else {
+        this.router.navigate(['/dashboard']);
+      }
     }
   }
 

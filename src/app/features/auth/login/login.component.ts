@@ -438,7 +438,7 @@ export class LoginComponent {
     this.loading = true;
     this.errorMessage = '';
 
-    setTimeout(() => {
+    try {
       const res = this.authService.loginEmployee(this.loginIdentifier, this.loginPassword);
       this.loading = false;
 
@@ -449,7 +449,10 @@ export class LoginComponent {
       } else {
         this.errorMessage = res.message || 'Login failed. Please verify credentials.';
       }
-    }, 350);
+    } catch (err: any) {
+      this.loading = false;
+      this.errorMessage = err.message || 'An error occurred during sign in.';
+    }
   }
 
   handleRegister(): void {
@@ -491,38 +494,40 @@ export class LoginComponent {
     this.loading = true;
     this.errorMessage = '';
 
-    setTimeout(() => {
-      try {
-        const newUser = this.dataService.registerEmployee({
-          name,
-          username: username.trim(),
-          phone,
-          designation,
-          email,
-          password,
-          avatar: avatarPreview || undefined
-        });
+    try {
+      const newUser = this.dataService.registerEmployee({
+        name,
+        username: username.trim(),
+        phone,
+        designation,
+        email,
+        password,
+        avatar: avatarPreview || undefined
+      });
 
-        this.loading = false;
-        this.successMessage = `Account for ${newUser.name} created successfully! You can now sign in immediately using your User ID "${newUser.employeeId}" (or email) and your password.`;
-        this.toastService.success(`Account created! User ID: ${newUser.employeeId}`);
+      this.loading = false;
+      this.successMessage = `Account for ${newUser.name} created successfully! You can now sign in immediately using your User ID "${newUser.employeeId}" (or email) and your password.`;
+      this.toastService.success(`Account created! User ID: ${newUser.employeeId}`);
 
-        // Reset registration form
-        this.regForm = {
-          name: '',
-          username: '',
-          phone: '',
-          designation: '',
-          email: '',
-          password: '',
-          confirmPassword: '',
-          avatarPreview: ''
-        };
-      } catch (err: any) {
-        this.loading = false;
-        this.errorMessage = err.message || 'Registration failed.';
-      }
-    }, 450);
+      // Pre-fill login identifier for 1-click convenience
+      this.loginIdentifier = newUser.employeeId;
+      this.loginPassword = password;
+
+      // Reset registration form
+      this.regForm = {
+        name: '',
+        username: '',
+        phone: '',
+        designation: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        avatarPreview: ''
+      };
+    } catch (err: any) {
+      this.loading = false;
+      this.errorMessage = err.message || 'Registration failed.';
+    }
   }
 
   private navigateByUserRole(user: User | null): void {

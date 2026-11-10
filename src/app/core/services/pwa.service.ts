@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -41,6 +42,31 @@ export class PwaService {
   }
 
   private registerServiceWorker(): void {
+    if (typeof window === 'undefined') return;
+
+    // In local development or on localhost, proactively unregister all service workers and clean cache
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost || !environment.production) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (const reg of regs) {
+            reg.unregister();
+            console.log('Unregistered development ServiceWorker:', reg.scope);
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          for (const k of keys) {
+            if (k.startsWith('7clouds')) {
+              caches.delete(k);
+            }
+          }
+        });
+      }
+      return;
+    }
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker

@@ -234,6 +234,20 @@ export class AuthService {
     return true;
   }
 
+  switchUser(userId: string): void {
+    if (userId === 'host' || userId === PRIVATE_HOST_USER.id) {
+      this.currentUserSubject.next(PRIVATE_HOST_USER);
+      localStorage.setItem(this.CURRENT_USER_KEY, 'host');
+      return;
+    }
+    const users = this.dataService.getUsersSnapshot();
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      this.currentUserSubject.next(user);
+      localStorage.setItem(this.CURRENT_USER_KEY, user.id);
+    }
+  }
+
   logout(): void {
     this.currentUserSubject.next(null);
     localStorage.removeItem(this.CURRENT_USER_KEY);

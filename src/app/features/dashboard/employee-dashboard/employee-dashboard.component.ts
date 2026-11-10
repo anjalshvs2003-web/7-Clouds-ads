@@ -276,6 +276,7 @@ export class EmployeeDashboardComponent implements OnInit, OnDestroy {
 
   private timerInterval: any;
   private subs: Subscription[] = [];
+  private userSubs: Subscription[] = [];
 
   constructor(
     private authService: AuthService,
@@ -306,6 +307,9 @@ export class EmployeeDashboardComponent implements OnInit, OnDestroy {
         this.currentUser = u;
         if (u) {
           this.loadUserData(u.id);
+        } else {
+          this.userSubs.forEach(s => s.unsubscribe());
+          this.userSubs = [];
         }
       })
     );
@@ -313,11 +317,13 @@ export class EmployeeDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.timerInterval) clearInterval(this.timerInterval);
+    this.userSubs.forEach(s => s.unsubscribe());
     this.subs.forEach(s => s.unsubscribe());
   }
 
   private loadUserData(userId: string): void {
-    this.subs.push(
+    this.userSubs.forEach(s => s.unsubscribe());
+    this.userSubs = [
       this.attendanceService.getTodayRecord(userId).subscribe(rec => {
         this.todayRecord = rec;
         this.updateWorkingHours();
@@ -328,7 +334,7 @@ export class EmployeeDashboardComponent implements OnInit, OnDestroy {
       this.taskService.getUserTasks(userId).subscribe(tasks => {
         this.myTasks = tasks;
       })
-    );
+    ];
   }
 
   private updateClock(): void {

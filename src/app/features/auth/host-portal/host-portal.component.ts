@@ -125,7 +125,7 @@ export class HostPortalComponent {
     this.loading = true;
     this.errorMessage = '';
 
-    setTimeout(() => {
+    try {
       const res = this.authService.loginHost(this.accessKey);
       this.loading = false;
 
@@ -136,7 +136,10 @@ export class HostPortalComponent {
         this.errorMessage = res.message || 'Invalid Host credentials. Access denied.';
         this.toastService.error('Host Authentication Failed.');
       }
-    }, 400);
+    } catch (err: any) {
+      this.loading = false;
+      this.errorMessage = err.message || 'Host authentication error.';
+    }
   }
 
   returnToPublic(): void {

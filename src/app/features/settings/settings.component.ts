@@ -154,14 +154,14 @@ import { StudioSettings } from '../../core/models';
         <div class="space-y-4 pt-4 border-t border-surface-border">
           <h2 class="text-sm font-bold text-rose-400 uppercase tracking-wider font-mono border-b border-surface-border pb-2 flex items-center gap-2">
             <app-icon name="alert-circle" [size]="16" extraClass="text-rose-400"></app-icon>
-            <span>Development & Demo Mode</span>
+            <span>Workspace Database State</span>
           </h2>
 
           <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div class="font-bold text-white">Reset Workspace To Factory Demo Data</div>
+              <div class="font-bold text-white">Reset Database to Defaults</div>
               <div class="text-[11px] text-text-muted mt-0.5">
-                Restores the 6 creative employees, attendance records, sample tasks, reports and announcements.
+                Reinitializes studio database tables, attendance records, and workspace configurations.
               </div>
             </div>
 
@@ -170,7 +170,7 @@ import { StudioSettings } from '../../core/models';
               (click)="resetDemoData()"
               class="px-3.5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-semibold transition-all shrink-0 cursor-pointer shadow-[0_0_15px_rgba(244,63,94,0.3)]"
             >
-              Reset All Seed Data
+              Reset Database
             </button>
           </div>
         </div>
@@ -211,9 +211,9 @@ export class SettingsComponent implements OnInit {
   }
 
   resetDemoData(): void {
-    if (confirm('Are you sure you want to reset all records to the original demo seed data?')) {
+    if (confirm('Are you sure you want to reset all records to the original workspace defaults?')) {
       this.dataService.resetToDefaults();
-      this.toastService.info('All demo data restored.');
+      this.toastService.info('Workspace database restored to defaults.');
       setTimeout(() => window.location.reload(), 500);
     }
   }

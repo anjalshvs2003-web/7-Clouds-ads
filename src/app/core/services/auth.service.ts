@@ -185,12 +185,18 @@ export class AuthService {
       };
     }
 
-    // Special 1-click passwordless bypass for Adithya Kumar as requested
+    // For Adithya Kumar (adithya@7clouds.studio)
     if (
       user.email.toLowerCase() === 'adithya@7clouds.studio' ||
       user.employeeId.toLowerCase() === '7c-emp001' ||
       user.employeeId.toLowerCase() === 'adithya'
     ) {
+      if (cleanPass && user.passwordHash && !verifyPassword(cleanPass, user.passwordHash)) {
+        return {
+          success: false,
+          message: 'Incorrect password. Please verify your credentials and try again.'
+        };
+      }
       this.currentUserSubject.next(user);
       localStorage.setItem(this.CURRENT_USER_KEY, user.id);
       return { success: true };

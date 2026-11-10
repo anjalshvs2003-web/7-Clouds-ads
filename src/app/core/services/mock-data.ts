@@ -130,7 +130,7 @@ export const INITIAL_ANNOUNCEMENTS: Announcement[] = [
   {
     id: 'ann-1',
     title: '7 Clouds Studio Workspace Live',
-    content: 'Welcome to 7 Clouds workspace. Adithya Kumar (adithya@7clouds.studio) is active with 1-click workspace entry.',
+    content: 'Welcome to 7 Clouds Studio workspace. Staff members can sign in or register their official account.',
     priority: 'Normal',
     publishedBy: 'host-root-master-001',
     publishedByName: 'Host Administrator',
@@ -145,8 +145,8 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     id: 'notif-1',
     recipientId: 'all',
     senderName: 'Host Administrator',
-    title: 'Studio System Updated',
-    message: 'Simplified Attendance Check-In / Check-Out and 1-Click Access for Adithya Kumar are online.',
+    title: 'Studio Workspace Active',
+    message: 'Attendance tracking, leave management, and daily task management are online.',
     type: 'announcement',
     link: '/announcements',
     isRead: false,
@@ -159,10 +159,10 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     id: 'audit-1',
     actorId: 'host-root-master-001',
     actorName: 'Host Administrator',
-    action: 'PROVISIONED_EMPLOYEE_ACCOUNT',
-    targetEntity: 'User',
-    targetId: 'user-adithya',
-    details: 'Configured official active employee account for Adithya Kumar (adithya@7clouds.studio) with 1-click login.',
+    action: 'INITIALIZED_WORKSPACE',
+    targetEntity: 'System',
+    targetId: 'system',
+    details: 'Initialized studio workspace database and staff governance systems.',
     timestamp: new Date().toISOString()
   }
 ];

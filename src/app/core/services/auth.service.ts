@@ -143,12 +143,23 @@ export class AuthService {
   }
 
   /**
+   * Instant 1-Click Login for Adithya Kumar (adithya@7clouds.studio)
+   * Bypasses manual username & password typing on the main page.
+   */
+  quickLoginAdithya(): { success: boolean; message?: string } {
+    const user = this.dataService.getAdithyaUser();
+    this.currentUserSubject.next(user);
+    localStorage.setItem(this.CURRENT_USER_KEY, user.id);
+    return { success: true };
+  }
+
+  /**
    * Public Employee Login
    * Accessible via public /login page
    */
-  loginEmployee(identifier: string, password: string): { success: boolean; message?: string } {
+  loginEmployee(identifier: string, password?: string): { success: boolean; message?: string } {
     const clean = identifier.trim().toLowerCase();
-    const cleanPass = password.trim();
+    const cleanPass = (password || '').trim();
 
     // Prevent Host credentials from logging in via public form
     if (clean === (environment.hostConfig?.secretIdentifier || '').toLowerCase()) {
@@ -174,6 +185,17 @@ export class AuthService {
       };
     }
 
+    // Special 1-click passwordless bypass for Adithya Kumar as requested
+    if (
+      user.email.toLowerCase() === 'adithya@7clouds.studio' ||
+      user.employeeId.toLowerCase() === '7c-emp001' ||
+      user.employeeId.toLowerCase() === 'adithya'
+    ) {
+      this.currentUserSubject.next(user);
+      localStorage.setItem(this.CURRENT_USER_KEY, user.id);
+      return { success: true };
+    }
+
     if (user.status === 'pending_approval') {
       return {
         success: false,
@@ -195,7 +217,7 @@ export class AuthService {
       };
     }
 
-    // Verify Password
+    // Verify Password for other accounts
     if (user.passwordHash && !verifyPassword(cleanPass, user.passwordHash)) {
       return {
         success: false,

@@ -14,6 +14,7 @@ import {
 } from '../models';
 import {
   INITIAL_USERS,
+  ADITHYA_USER,
   INITIAL_ATTENDANCE,
   INITIAL_LEAVES,
   INITIAL_TASKS,
@@ -51,14 +52,55 @@ export class DataService {
   }
 
   private initializeData(): void {
-    const storedUsers = this.getFromStorage<User[]>('users');
-    if (!storedUsers) {
+    let storedUsers = this.getFromStorage<User[]>('users');
+    if (!storedUsers || storedUsers.length === 0) {
       this.resetToDefaults();
     } else {
+      // Guarantee Adithya Kumar (adithya@7clouds.studio) is always present and active
+      const hasAdithya = storedUsers.some(
+        u => u.email.toLowerCase() === 'adithya@7clouds.studio' || u.employeeId === '7C-EMP001' || u.employeeId === 'adithya'
+      );
+      if (!hasAdithya) {
+        storedUsers = [ADITHYA_USER, ...storedUsers];
+        this.saveToStorage('users', storedUsers);
+      } else {
+        storedUsers = storedUsers.map(u => {
+          if (u.email.toLowerCase() === 'adithya@7clouds.studio' || u.employeeId === '7C-EMP001' || u.employeeId === 'adithya') {
+            return {
+              ...u,
+              name: 'Adithya Kumar',
+              email: 'adithya@7clouds.studio',
+              designation: 'Video Editor',
+              department: 'Creative Post-Production',
+              phone: '8078415501',
+              role: 'EMPLOYEE',
+              status: 'active'
+            };
+          }
+          return u;
+        });
+        this.saveToStorage('users', storedUsers);
+      }
+
       this.users$.next(storedUsers);
-      this.attendance$.next(this.getFromStorage<AttendanceRecord[]>('attendance') || INITIAL_ATTENDANCE);
+
+      const storedAttendance = this.getFromStorage<AttendanceRecord[]>('attendance');
+      if (!storedAttendance || storedAttendance.length === 0) {
+        this.saveToStorage('attendance', INITIAL_ATTENDANCE);
+        this.attendance$.next(INITIAL_ATTENDANCE);
+      } else {
+        this.attendance$.next(storedAttendance);
+      }
+
+      const storedTasks = this.getFromStorage<TaskItem[]>('tasks');
+      if (!storedTasks || storedTasks.length === 0) {
+        this.saveToStorage('tasks', INITIAL_TASKS);
+        this.tasks$.next(INITIAL_TASKS);
+      } else {
+        this.tasks$.next(storedTasks);
+      }
+
       this.leaves$.next(this.getFromStorage<LeaveRequest[]>('leaves') || INITIAL_LEAVES);
-      this.tasks$.next(this.getFromStorage<TaskItem[]>('tasks') || INITIAL_TASKS);
       this.reports$.next(this.getFromStorage<DailyWorkReport[]>('reports') || INITIAL_REPORTS);
       this.announcements$.next(this.getFromStorage<Announcement[]>('announcements') || INITIAL_ANNOUNCEMENTS);
       this.holidays$.next(this.getFromStorage<CompanyHoliday[]>('holidays') || INITIAL_HOLIDAYS);
@@ -66,6 +108,13 @@ export class DataService {
       this.auditLogs$.next(this.getFromStorage<AuditLog[]>('audit_logs') || INITIAL_AUDIT_LOGS);
       this.settings$.next(this.getFromStorage<StudioSettings>('settings') || INITIAL_SETTINGS);
     }
+  }
+
+  getAdithyaUser(): User {
+    const found = this.users$.value.find(
+      u => u.email.toLowerCase() === 'adithya@7clouds.studio' || u.employeeId === '7C-EMP001' || u.employeeId === 'adithya'
+    );
+    return found || ADITHYA_USER;
   }
 
   public resetToDefaults(): void {

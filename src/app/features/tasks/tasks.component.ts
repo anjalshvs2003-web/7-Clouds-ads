@@ -14,7 +14,7 @@ import {
   TaskPriority,
   TaskStatus
 } from '../../core/models';
-import { getTodayDateString } from '../../core/services/mock-data';
+import { getTodayDateStringIST, formatDateTimeIST } from '../../core/services/ist-date.utils';
 import { Subscription } from 'rxjs';
 import confetti from 'canvas-confetti';
 
@@ -23,8 +23,8 @@ import confetti from 'canvas-confetti';
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent, BadgeComponent, ModalComponent],
   template: `
-    <div class="space-y-6">
-      <!-- Top Title & Quick Actions -->
+    <div class="space-y-6 max-w-6xl mx-auto">
+      <!-- Title & Create Bar -->
       <div class="glass-panel p-6 sm:p-8 relative overflow-hidden">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-electric/15 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -32,268 +32,215 @@ import confetti from 'canvas-confetti';
           <div>
             <div class="flex items-center gap-2 mb-1.5">
               <span class="px-2.5 py-0.5 rounded-full bg-electric/20 text-electric-light font-mono text-[10px] font-bold uppercase tracking-wider">
-                Linear-Grade Velocity
+                Simplified Task System
               </span>
               <span class="text-text-muted">•</span>
-              <span class="text-xs font-mono text-text-muted">{{ currentDateStr }}</span>
+              <span class="text-xs font-mono text-text-muted">{{ displayedTasks.length }} Tasks</span>
             </div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Creative Task Board & Timer
+              Task Management
             </h1>
             <p class="text-xs sm:text-sm text-text-secondary mt-1">
-              Precision deadline tracking, integrated live task timers and estimated vs actual work allocation.
+              Clickable status buttons for instant deliverable updates without complex menus.
             </p>
           </div>
 
           <button
+            *ngIf="isAdmin"
             (click)="openCreateTaskModal()"
             class="btn-primary py-2.5 px-4 text-xs font-semibold self-start sm:self-auto cursor-pointer"
           >
             <app-icon name="plus" [size]="16"></app-icon>
-            <span>Create New Task</span>
+            <span>Assign New Task</span>
           </button>
         </div>
       </div>
 
-      <!-- Task Metrics Row -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="glass-panel p-4">
-          <div class="text-[10px] font-mono uppercase text-text-muted">Due Today</div>
-          <div class="text-2xl font-bold text-white font-mono mt-1">{{ categorizedStats.todayTasks.length }}</div>
-          <div class="text-[10px] text-text-secondary mt-0.5">High focus priorities</div>
-        </div>
-
-        <div class="glass-panel p-4">
-          <div class="text-[10px] font-mono uppercase text-rose-400">Overdue</div>
-          <div class="text-2xl font-bold text-rose-400 font-mono mt-1">{{ categorizedStats.overdueTasks.length }}</div>
-          <div class="text-[10px] text-text-muted mt-0.5">Needs immediate push</div>
-        </div>
-
-        <div class="glass-panel p-4">
-          <div class="text-[10px] font-mono uppercase text-emerald-400">Completed</div>
-          <div class="text-2xl font-bold text-emerald-400 font-mono mt-1">{{ categorizedStats.completedTasks.length }}</div>
-          <div class="text-[10px] text-text-muted mt-0.5">{{ categorizedStats.completionRate }}% sprint rate</div>
-        </div>
-
-        <div class="glass-panel p-4">
-          <div class="text-[10px] font-mono uppercase text-electric">Hours (Est vs Act)</div>
-          <div class="text-xl font-bold text-white font-mono mt-1">
-            {{ categorizedStats.totalAct }}h <span class="text-text-muted text-sm font-normal">/ {{ categorizedStats.totalEst }}h</span>
-          </div>
-          <div class="text-[10px] text-text-muted mt-0.5">Studio production time</div>
-        </div>
-      </div>
-
-      <!-- Filters & View Switcher -->
-      <div class="glass-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <!-- Filter Tabs -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs">
+      <!-- Quick Filter Tabs -->
+      <div class="glass-panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           <button
             type="button"
             (click)="activeTab = 'ALL'"
             class="px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer whitespace-nowrap"
             [ngClass]="activeTab === 'ALL' ? 'bg-electric text-white shadow-glow-sm' : 'text-text-muted hover:text-white hover:bg-white/5'"
           >
-            All ({{ allFilteredTasks.length }})
+            All Tasks
           </button>
-
           <button
             type="button"
-            (click)="activeTab = 'TODAY'"
+            (click)="activeTab = 'IN_PROGRESS'"
             class="px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer whitespace-nowrap"
-            [ngClass]="activeTab === 'TODAY' ? 'bg-electric text-white shadow-glow-sm' : 'text-text-muted hover:text-white hover:bg-white/5'"
+            [ngClass]="activeTab === 'IN_PROGRESS' ? 'bg-blue-600 text-white shadow-glow-sm' : 'text-text-muted hover:text-white hover:bg-white/5'"
           >
-            Due Today ({{ categorizedStats.todayTasks.length }})
+            In Progress
           </button>
-
-          <button
-            type="button"
-            (click)="activeTab = 'OVERDUE'"
-            class="px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer whitespace-nowrap"
-            [ngClass]="activeTab === 'OVERDUE' ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]' : 'text-text-muted hover:text-white hover:bg-white/5'"
-          >
-            Overdue ({{ categorizedStats.overdueTasks.length }})
-          </button>
-
           <button
             type="button"
             (click)="activeTab = 'COMPLETED'"
             class="px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer whitespace-nowrap"
-            [ngClass]="activeTab === 'COMPLETED' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'text-text-muted hover:text-white hover:bg-white/5'"
+            [ngClass]="activeTab === 'COMPLETED' ? 'bg-emerald-600 text-white shadow-glow-sm' : 'text-text-muted hover:text-white hover:bg-white/5'"
           >
-            Completed ({{ categorizedStats.completedTasks.length }})
+            Completed
+          </button>
+          <button
+            type="button"
+            (click)="activeTab = 'NOT_STARTED'"
+            class="px-3 py-1.5 rounded-xl font-medium transition-all cursor-pointer whitespace-nowrap"
+            [ngClass]="activeTab === 'NOT_STARTED' ? 'bg-slate-700 text-white shadow-glow-sm' : 'text-text-muted hover:text-white hover:bg-white/5'"
+          >
+            Not Started
           </button>
         </div>
 
-        <!-- Search & Priority filter -->
         <div class="flex items-center gap-2">
-          <div class="relative">
-            <app-icon name="search" [size]="14" extraClass="absolute left-3 top-2.5 text-text-muted"></app-icon>
-            <input
-              type="text"
-              [(ngModel)]="searchQuery"
-              placeholder="Search title, project..."
-              class="input-field pl-8 py-1.5 text-xs w-48 sm:w-60"
-            />
-          </div>
-
-          <select [(ngModel)]="priorityFilter" class="input-field py-1.5 text-xs w-auto">
-            <option value="ALL">All Priorities</option>
-            <option value="Urgent">Urgent</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            placeholder="Search task title, project..."
+            class="input-field py-1.5 px-3 text-xs w-48 sm:w-60"
+          />
         </div>
       </div>
 
-      <!-- Tasks Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- TASKS LIST: With [ Not Started ] [ In Progress ] [ Completed ] Clickable Buttons -->
+      <div class="space-y-4">
         <div
           *ngFor="let task of displayedTasks"
-          class="glass-panel p-5 flex flex-col justify-between hover:border-surface-border-bright transition-all group relative overflow-hidden"
-          [ngClass]="task.timerRunning ? 'ring-1 ring-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.15)]' : ''"
+          class="glass-panel p-5 sm:p-6 hover:border-surface-border-bright transition-all space-y-4"
+          [ngClass]="{
+            'border-emerald-500/30': task.status === 'Completed',
+            'border-blue-500/30': task.status === 'In Progress'
+          }"
         >
-          <!-- Active Timer Glow bar on top -->
-          <div *ngIf="task.timerRunning" class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-electric animate-pulse"></div>
-
-          <div>
-            <!-- Top Tags & Priority -->
-            <div class="flex items-center justify-between gap-2 mb-2.5">
-              <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-surface-secondary text-text-muted truncate max-w-[150px]">
-                {{ task.projectName }}
-              </span>
-              <div class="flex items-center gap-1.5 shrink-0">
+          <!-- Task Header -->
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div class="space-y-1 min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-surface-secondary text-text-muted">
+                  {{ task.projectName }}
+                </span>
                 <app-badge [label]="task.priority" [variant]="task.priority"></app-badge>
-                <app-badge [label]="task.status" [variant]="task.status"></app-badge>
+                <span class="text-[10px] font-mono text-text-muted">Assigned: {{ task.createdDate }}</span>
+                <span class="text-[10px] font-mono font-bold" [ngClass]="isOverdue(task) ? 'text-rose-400' : 'text-text-muted'">
+                  Deadline: {{ task.dueDate }}
+                </span>
               </div>
+
+              <h2 class="text-base sm:text-lg font-bold text-white leading-snug">
+                {{ task.title }}
+              </h2>
             </div>
 
-            <!-- Task Title -->
-            <h3 class="text-sm font-bold text-white group-hover:text-electric-light transition-colors mb-1.5">
-              {{ task.title }}
-            </h3>
-
-            <!-- Task Description -->
-            <p class="text-xs text-text-secondary line-clamp-2 leading-relaxed mb-4">
-              {{ task.description }}
-            </p>
-
-            <!-- Reference Link if any -->
-            <div *ngIf="task.referenceUrl" class="mb-4">
-              <a
-                [href]="task.referenceUrl"
-                target="_blank"
-                rel="noopener"
-                class="inline-flex items-center gap-1 text-[11px] text-electric hover:underline font-mono truncate max-w-full"
-              >
-                <span>🔗 {{ task.referenceUrl }}</span>
-              </a>
+            <!-- Assigned Employee Avatar & Name -->
+            <div class="flex items-center gap-2 shrink-0 bg-surface-secondary/60 px-3 py-1.5 rounded-xl border border-surface-border">
+              <img
+                [src]="task.assignedToAvatar"
+                [alt]="task.assignedToName"
+                class="w-6 h-6 rounded-full object-cover shrink-0"
+              />
+              <span class="text-xs font-semibold text-white">{{ task.assignedToName }}</span>
             </div>
           </div>
 
-          <!-- Bottom Meta & Actions -->
-          <div class="pt-3 border-t border-surface-border/60 space-y-3">
-            <!-- Progress Slider / Bar -->
-            <div>
-              <div class="flex items-center justify-between text-[11px] mb-1 font-mono">
-                <span class="text-text-muted">Completion</span>
-                <span class="text-white font-semibold">{{ task.completionPercentage }}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                [ngModel]="task.completionPercentage"
-                (ngModelChange)="updateProgress(task, $event)"
-                class="w-full h-1.5 bg-surface-secondary rounded-lg appearance-none cursor-pointer accent-electric"
-              />
-            </div>
+          <!-- Description -->
+          <p *ngIf="task.description" class="text-xs text-text-secondary leading-relaxed bg-surface-secondary/40 p-3 rounded-xl border border-surface-border/50">
+            {{ task.description }}
+          </p>
 
-            <!-- Assigned Employee & Timer Action -->
-            <div class="flex items-center justify-between gap-2 text-xs">
-              <div class="flex items-center gap-2 min-w-0">
-                <img
-                  [src]="task.assignedToAvatar"
-                  [alt]="task.assignedToName"
-                  class="w-6 h-6 rounded-full object-cover shrink-0"
-                  [title]="task.assignedToName"
-                />
-                <span class="text-[11px] text-text-secondary truncate">{{ task.assignedToName }}</span>
-              </div>
-
-              <!-- Action Controls -->
-              <div class="flex items-center gap-1.5 shrink-0">
-                <!-- Task Timer Button -->
+          <!-- SIMPLIFIED CLICKABLE STATUS BUTTONS -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-surface-border/60">
+            <!-- 3 Simple Status Buttons -->
+            <div class="space-y-1.5">
+              <span class="text-[10px] font-mono uppercase font-bold text-text-muted tracking-wider block">
+                Update Status:
+              </span>
+              <div class="inline-flex items-center gap-2 bg-surface-secondary/80 p-1.5 rounded-2xl border border-surface-border">
+                <!-- 1. NOT STARTED BUTTON -->
                 <button
-                  *ngIf="task.status !== 'Completed'"
                   type="button"
-                  (click)="toggleTimer(task)"
-                  class="p-2 rounded-xl text-xs font-mono transition-all flex items-center gap-1 cursor-pointer"
-                  [ngClass]="task.timerRunning ? 'bg-amber-500 text-black font-bold animate-pulse' : 'bg-surface-secondary hover:bg-electric text-text-muted hover:text-white'"
-                  [title]="task.timerRunning ? 'Pause Task Timer' : 'Start Task Timer'"
+                  (click)="changeTaskStatus(task, 'Not Started')"
+                  [disabled]="!canUpdateTask(task)"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  [ngClass]="task.status === 'Not Started' || task.status === 'Pending' ? 'bg-slate-700 text-white shadow-sm ring-1 ring-slate-500' : 'text-text-muted hover:text-white hover:bg-white/5'"
+                  title="Mark Not Started"
                 >
-                  <app-icon [name]="task.timerRunning ? 'pause' : 'play'" [size]="13"></app-icon>
-                  <span>{{ task.actualHours }}h</span>
+                  <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span>Not Started</span>
                 </button>
 
-                <!-- Mark Complete -->
+                <!-- 2. IN PROGRESS BUTTON -->
                 <button
-                  *ngIf="task.status !== 'Completed'"
                   type="button"
-                  (click)="markCompleted(task)"
-                  class="p-2 rounded-xl bg-surface-secondary hover:bg-emerald-500 text-text-muted hover:text-white transition-all cursor-pointer"
+                  (click)="changeTaskStatus(task, 'In Progress')"
+                  [disabled]="!canUpdateTask(task)"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  [ngClass]="task.status === 'In Progress' ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.4)] ring-1 ring-blue-400' : 'text-text-muted hover:text-white hover:bg-white/5'"
+                  title="Mark In Progress"
+                >
+                  <span class="w-2 h-2 rounded-full bg-blue-300 animate-pulse"></span>
+                  <span>In Progress</span>
+                </button>
+
+                <!-- 3. COMPLETED BUTTON -->
+                <button
+                  type="button"
+                  (click)="changeTaskStatus(task, 'Completed')"
+                  [disabled]="!canUpdateTask(task)"
+                  class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  [ngClass]="task.status === 'Completed' ? 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-1 ring-emerald-400' : 'text-text-muted hover:text-white hover:bg-white/5'"
                   title="Mark Completed"
                 >
-                  <app-icon name="check" [size]="14"></app-icon>
-                </button>
-
-                <!-- Edit Task Modal Trigger -->
-                <button
-                  type="button"
-                  (click)="openEditModal(task)"
-                  class="p-2 rounded-xl bg-surface-secondary hover:bg-surface-tertiary text-text-muted hover:text-white transition-all cursor-pointer"
-                  title="Edit Task Details"
-                >
-                  <app-icon name="edit" [size]="13"></app-icon>
+                  <app-icon name="check" [size]="13"></app-icon>
+                  <span>Completed</span>
                 </button>
               </div>
             </div>
 
-            <!-- Due Date Badge -->
-            <div class="flex items-center justify-between text-[10px] text-text-muted font-mono pt-1">
-              <span>Est: {{ task.estimatedHours }} hrs</span>
-              <span [ngClass]="isTaskOverdue(task) ? 'text-rose-400 font-bold' : 'text-text-muted'">
-                Due: {{ task.dueDate }}
-              </span>
+            <!-- Completion Date & Admin Actions -->
+            <div class="flex items-center gap-3 self-end sm:self-center">
+              <div *ngIf="task.completedAt" class="text-right text-[11px] font-mono text-emerald-400">
+                <span class="text-text-muted block text-[10px]">Completed On:</span>
+                <span>{{ formatCompletedDate(task.completedAt) }}</span>
+              </div>
+
+              <!-- Host / HR Delete Option -->
+              <button
+                *ngIf="isAdmin"
+                type="button"
+                (click)="deleteTask(task.id)"
+                class="p-2 rounded-xl text-text-muted hover:text-rose-400 hover:bg-white/5 transition-colors cursor-pointer"
+                title="Delete Task"
+              >
+                <app-icon name="trash-2" [size]="14"></app-icon>
+              </button>
             </div>
           </div>
         </div>
 
-        <div *ngIf="displayedTasks.length === 0" class="col-span-full py-16 text-center text-xs text-text-muted glass-panel">
-          No tasks found matching this criteria. Create a new task or adjust filters.
+        <div *ngIf="displayedTasks.length === 0" class="glass-panel py-16 text-center text-xs text-text-muted">
+          No tasks found under this filter view.
         </div>
       </div>
 
-      <!-- Create / Edit Task Modal -->
+      <!-- Assign New Task Modal (Host & HR Admin) -->
       <app-modal
         [isOpen]="isTaskModalOpen"
-        [title]="editingTaskId ? 'Edit Creative Task' : 'Create New Creative Task'"
-        subtitle="Set deliverables, estimated hours, deadlines and assignments"
+        title="Assign New Task"
+        subtitle="Specify deliverable title, assignee, priority and deadline"
         (close)="isTaskModalOpen = false"
       >
-        <form (ngSubmit)="saveTaskForm()" class="space-y-4 text-xs">
+        <form (ngSubmit)="saveNewTask()" class="space-y-4 text-xs">
           <div>
             <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
               Task Title *
             </label>
             <input
               type="text"
-              [(ngModel)]="taskFormData.title"
+              [(ngModel)]="taskForm.title"
               name="title"
               required
-              placeholder="e.g. Master Grade & Export 4K ProRes"
+              placeholder="e.g. Rough Cut Assembly for Commercial Spot"
               class="input-field"
             />
           </div>
@@ -305,26 +252,21 @@ import confetti from 'canvas-confetti';
               </label>
               <input
                 type="text"
-                [(ngModel)]="taskFormData.projectName"
+                [(ngModel)]="taskForm.projectName"
                 name="projectName"
                 required
-                placeholder="e.g. Nike Cyber Campaign"
+                placeholder="e.g. 7 Clouds Ads"
                 class="input-field"
               />
             </div>
 
             <div>
               <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-                Assign To Creative *
+                Assign To Employee *
               </label>
-              <select
-                [(ngModel)]="taskFormData.assignedTo"
-                name="assignedTo"
-                required
-                class="input-field"
-              >
-                <option *ngFor="let u of allUsers" [value]="u.id">
-                  {{ u.name }} ({{ u.designation }})
+              <select [(ngModel)]="taskForm.assignedTo" name="assignedTo" required class="input-field">
+                <option *ngFor="let staff of staffList" [value]="staff.id">
+                  {{ staff.name }} ({{ staff.designation }})
                 </option>
               </select>
             </div>
@@ -332,23 +274,23 @@ import confetti from 'canvas-confetti';
 
           <div>
             <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-              Deliverable Description
+              Short Description
             </label>
             <textarea
-              [(ngModel)]="taskFormData.description"
+              [(ngModel)]="taskForm.description"
               name="description"
               rows="3"
-              placeholder="Specify requirements, dimensions, LUTs, render passes..."
+              placeholder="Specify requirements, dimensions, LUTs, sound sync..."
               class="input-field"
             ></textarea>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
                 Priority
               </label>
-              <select [(ngModel)]="taskFormData.priority" name="priority" class="input-field">
+              <select [(ngModel)]="taskForm.priority" name="priority" class="input-field">
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
@@ -358,25 +300,11 @@ import confetti from 'canvas-confetti';
 
             <div>
               <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-                Estimated Hours
-              </label>
-              <input
-                type="number"
-                step="0.5"
-                min="0.5"
-                [(ngModel)]="taskFormData.estimatedHours"
-                name="estimatedHours"
-                class="input-field font-mono"
-              />
-            </div>
-
-            <div>
-              <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-                Deadline Date
+                Deadline Date *
               </label>
               <input
                 type="date"
-                [(ngModel)]="taskFormData.dueDate"
+                [(ngModel)]="taskForm.dueDate"
                 name="dueDate"
                 required
                 class="input-field font-mono"
@@ -384,46 +312,20 @@ import confetti from 'canvas-confetti';
             </div>
           </div>
 
-          <div>
-            <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-              Reference Asset URL (Frame.io, Figma, Drive)
-            </label>
-            <input
-              type="url"
-              [(ngModel)]="taskFormData.referenceUrl"
-              name="referenceUrl"
-              placeholder="https://figma.com/file/..."
-              class="input-field"
-            />
-          </div>
-
-          <div class="flex items-center justify-between pt-3 border-t border-surface-border">
+          <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
             <button
-              *ngIf="editingTaskId"
               type="button"
-              (click)="deleteTask()"
-              class="text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1 cursor-pointer"
+              (click)="isTaskModalOpen = false"
+              class="btn-secondary text-xs"
             >
-              <app-icon name="trash-2" [size]="14"></app-icon>
-              <span>Delete Task</span>
+              Cancel
             </button>
-            <div *ngIf="!editingTaskId"></div>
-
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                (click)="isTaskModalOpen = false"
-                class="btn-secondary text-xs"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                class="btn-primary text-xs"
-              >
-                {{ editingTaskId ? 'Update Task' : 'Create Task' }}
-              </button>
-            </div>
+            <button
+              type="submit"
+              class="btn-primary text-xs"
+            >
+              Assign Task
+            </button>
           </div>
         </form>
       </app-modal>
@@ -434,35 +336,19 @@ export class TasksComponent implements OnInit, OnDestroy {
   currentUser: User | null = null;
   isAdmin = false;
   allTasks: TaskItem[] = [];
-  allUsers: User[] = [];
-  currentDateStr = '';
+  staffList: User[] = [];
 
-  activeTab: 'ALL' | 'TODAY' | 'OVERDUE' | 'COMPLETED' = 'ALL';
+  activeTab: 'ALL' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_STARTED' = 'ALL';
   searchQuery = '';
-  priorityFilter = 'ALL';
 
-  categorizedStats = {
-    todayTasks: [] as TaskItem[],
-    overdueTasks: [] as TaskItem[],
-    upcomingTasks: [] as TaskItem[],
-    completedTasks: [] as TaskItem[],
-    totalEst: 0,
-    totalAct: 0,
-    completionRate: 0
-  };
-
-  // Modal State
   isTaskModalOpen = false;
-  editingTaskId: string | null = null;
-  taskFormData = {
+  taskForm = {
     title: '',
-    projectName: '',
+    projectName: '7 Clouds Ads',
     description: '',
     assignedTo: '',
-    dueDate: getTodayDateString(),
-    estimatedHours: 4,
-    priority: 'Medium' as TaskPriority,
-    referenceUrl: ''
+    dueDate: getTodayDateStringIST(),
+    priority: 'Medium' as TaskPriority
   };
 
   private subs: Subscription[] = [];
@@ -475,25 +361,16 @@ export class TasksComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    const now = new Date();
-    this.currentDateStr = now.toLocaleDateString([], {
-      weekday: 'long',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-
     this.subs.push(
       this.authService.currentUser$.subscribe(u => {
         this.currentUser = u;
-        this.isAdmin = u?.role === 'admin';
+        this.isAdmin = this.authService.isAdmin();
       }),
       this.dataService.getUsers().subscribe(users => {
-        this.allUsers = users.filter(u => u.status === 'active');
+        this.staffList = users.filter(u => u.status === 'active');
       }),
       this.taskService.getAllTasks().subscribe(tasks => {
         this.allTasks = tasks;
-        this.categorizedStats = this.taskService.categorizeTasks(tasks);
       })
     );
   }
@@ -502,12 +379,20 @@ export class TasksComponent implements OnInit, OnDestroy {
     this.subs.forEach(s => s.unsubscribe());
   }
 
-  get allFilteredTasks(): TaskItem[] {
+  get displayedTasks(): TaskItem[] {
     let list = [...this.allTasks];
 
-    // If regular employee, show tasks assigned to them
+    // If regular employee, only show tasks assigned to them
     if (!this.isAdmin && this.currentUser) {
       list = list.filter(t => t.assignedTo === this.currentUser!.id);
+    }
+
+    if (this.activeTab === 'IN_PROGRESS') {
+      list = list.filter(t => t.status === 'In Progress');
+    } else if (this.activeTab === 'COMPLETED') {
+      list = list.filter(t => t.status === 'Completed');
+    } else if (this.activeTab === 'NOT_STARTED') {
+      list = list.filter(t => t.status === 'Not Started' || t.status === 'Pending');
     }
 
     if (this.searchQuery.trim()) {
@@ -517,142 +402,84 @@ export class TasksComponent implements OnInit, OnDestroy {
       );
     }
 
-    if (this.priorityFilter !== 'ALL') {
-      list = list.filter(t => t.priority === this.priorityFilter);
-    }
-
     return list;
   }
 
-  get displayedTasks(): TaskItem[] {
-    const today = getTodayDateString();
-    let list = this.allFilteredTasks;
-
-    if (this.activeTab === 'TODAY') {
-      list = list.filter(t => t.dueDate === today && t.status !== 'Completed');
-    } else if (this.activeTab === 'OVERDUE') {
-      list = list.filter(t => t.dueDate < today && t.status !== 'Completed');
-    } else if (this.activeTab === 'COMPLETED') {
-      list = list.filter(t => t.status === 'Completed');
-    }
-
-    return list;
+  canUpdateTask(task: TaskItem): boolean {
+    if (this.isAdmin) return true;
+    return task.assignedTo === this.currentUser?.id;
   }
 
-  isTaskOverdue(task: TaskItem): boolean {
-    const today = getTodayDateString();
+  isOverdue(task: TaskItem): boolean {
+    const today = getTodayDateStringIST();
     return task.dueDate < today && task.status !== 'Completed';
   }
 
-  toggleTimer(task: TaskItem): void {
-    if (task.timerRunning) {
-      this.taskService.pauseTimer(task.id);
-      this.toastService.info(`Timer paused (${task.actualHours} hrs logged)`);
-    } else {
-      this.taskService.startTimer(task.id);
-      this.toastService.success(`Live task timer running for "${task.title}"`);
+  changeTaskStatus(task: TaskItem, newStatus: 'Not Started' | 'In Progress' | 'Completed'): void {
+    if (!this.currentUser) return;
+
+    try {
+      this.taskService.setTaskStatus(task.id, newStatus, this.currentUser);
+      this.toastService.success(`Task status updated to [ ${newStatus} ]`);
+
+      if (newStatus === 'Completed') {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.7 }
+        });
+      }
+    } catch (err: any) {
+      this.toastService.error(err.message || 'Cannot update task');
     }
-  }
-
-  markCompleted(task: TaskItem): void {
-    this.taskService.updateTask(task.id, {
-      status: 'Completed',
-      completionPercentage: 100
-    });
-    this.toastService.success(`Task "${task.title}" completed!`);
-    confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-  }
-
-  updateProgress(task: TaskItem, percentage: number): void {
-    const status: TaskStatus = percentage === 100 ? 'Completed' : (percentage > 0 ? 'In Progress' : 'Pending');
-    this.taskService.updateTask(task.id, {
-      completionPercentage: percentage,
-      status: status
-    });
   }
 
   openCreateTaskModal(): void {
-    this.editingTaskId = null;
-    this.taskFormData = {
+    this.taskForm = {
       title: '',
-      projectName: '',
+      projectName: '7 Clouds Ads',
       description: '',
-      assignedTo: this.allUsers[0]?.id || '',
-      dueDate: getTodayDateString(),
-      estimatedHours: 4,
-      priority: 'Medium',
-      referenceUrl: ''
+      assignedTo: this.staffList[0]?.id || '',
+      dueDate: getTodayDateStringIST(),
+      priority: 'Medium'
     };
     this.isTaskModalOpen = true;
   }
 
-  openEditModal(task: TaskItem): void {
-    this.editingTaskId = task.id;
-    this.taskFormData = {
-      title: task.title,
-      projectName: task.projectName,
-      description: task.description,
-      assignedTo: task.assignedTo,
-      dueDate: task.dueDate,
-      estimatedHours: task.estimatedHours,
-      priority: task.priority,
-      referenceUrl: task.referenceUrl || ''
-    };
-    this.isTaskModalOpen = true;
-  }
-
-  saveTaskForm(): void {
+  saveNewTask(): void {
     if (!this.currentUser) return;
-    if (!this.taskFormData.title || !this.taskFormData.projectName) {
-      this.toastService.error('Please enter a task title and project name.');
+    if (!this.taskForm.title.trim() || !this.taskForm.assignedTo) {
+      this.toastService.error('Please enter a task title and assign to an employee.');
       return;
     }
 
-    const assignedUser = this.allUsers.find(u => u.id === this.taskFormData.assignedTo);
-    if (!assignedUser) {
-      this.toastService.error('Please select an assigned creative.');
-      return;
-    }
+    const assigned = this.staffList.find(s => s.id === this.taskForm.assignedTo);
+    if (!assigned) return;
 
-    if (this.editingTaskId) {
-      this.taskService.updateTask(this.editingTaskId, {
-        title: this.taskFormData.title,
-        projectName: this.taskFormData.projectName,
-        description: this.taskFormData.description,
-        assignedTo: assignedUser.id,
-        assignedToName: assignedUser.name,
-        assignedToAvatar: assignedUser.avatar,
-        dueDate: this.taskFormData.dueDate,
-        estimatedHours: this.taskFormData.estimatedHours,
-        priority: this.taskFormData.priority,
-        referenceUrl: this.taskFormData.referenceUrl
-      });
-      this.toastService.success('Task details updated.');
-    } else {
-      this.taskService.createTask(this.currentUser, {
-        title: this.taskFormData.title,
-        projectName: this.taskFormData.projectName,
-        description: this.taskFormData.description,
-        assignedTo: assignedUser.id,
-        assignedToName: assignedUser.name,
-        assignedToAvatar: assignedUser.avatar,
-        dueDate: this.taskFormData.dueDate,
-        estimatedHours: this.taskFormData.estimatedHours,
-        priority: this.taskFormData.priority,
-        referenceUrl: this.taskFormData.referenceUrl
-      });
-      this.toastService.success(`Created task and assigned to ${assignedUser.name}.`);
-    }
+    this.taskService.createTask(this.currentUser, {
+      title: this.taskForm.title,
+      projectName: this.taskForm.projectName,
+      description: this.taskForm.description,
+      assignedTo: assigned.id,
+      assignedToName: assigned.name,
+      assignedToAvatar: assigned.avatar,
+      dueDate: this.taskForm.dueDate,
+      estimatedHours: 4,
+      priority: this.taskForm.priority
+    });
 
     this.isTaskModalOpen = false;
+    this.toastService.success(`Task assigned to ${assigned.name}.`);
   }
 
-  deleteTask(): void {
-    if (!this.editingTaskId) return;
-    if (confirm('Are you sure you want to remove this task?')) {
-      this.taskService.deleteTask(this.editingTaskId);
-      this.isTaskModalOpen = false;
-      this.toastService.info('Task removed.');
+  deleteTask(taskId: string): void {
+    if (confirm('Delete this task?')) {
+      this.taskService.deleteTask(taskId);
+      this.toastService.info('Task deleted.');
     }
+  }
+
+  formatCompletedDate(isoStr?: string): string {
+    return formatDateTimeIST(isoStr);
   }
 }

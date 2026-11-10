@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { TaskItem, TaskPriority, TaskStatus, User } from '../models';
 import { DataService } from './data.service';
-import { getTodayDateString } from './mock-data';
+import { getTodayDateStringIST } from './ist-date.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -45,12 +45,12 @@ export class TaskService {
       assignedToAvatar: data.assignedToAvatar,
       createdBy: creator.id,
       createdByName: creator.name,
-      createdDate: getTodayDateString(),
+      createdDate: getTodayDateStringIST(),
       dueDate: data.dueDate,
       estimatedHours: data.estimatedHours,
       actualHours: 0,
       priority: data.priority,
-      status: 'Pending',
+      status: 'Not Started',
       completionPercentage: 0,
       referenceUrl: data.referenceUrl,
       timerRunning: false
@@ -58,14 +58,13 @@ export class TaskService {
 
     this.dataService.saveTask(newTask);
 
-    // Notify assigned employee if created by someone else
     if (creator.id !== data.assignedTo) {
       this.dataService.addNotification({
         id: `notif-${Date.now()}`,
         recipientId: data.assignedTo,
         senderName: creator.name,
         title: 'New Creative Task Assigned',
-        message: `You were assigned to "${data.title}" (${data.projectName}). Due: ${data.dueDate}`,
+        message: `You were assigned to "${data.title}" by ${creator.name}. Due: ${data.dueDate}`,
         type: 'task',
         link: '/tasks',
         isRead: false,
@@ -74,6 +73,65 @@ export class TaskService {
     }
 
     return newTask;
+  }
+
+  /**
+   * Simplified 3-State Clickable Button Action:
+   * [ Not Started ]  [ In Progress ]  [ Completed ]
+   * Checks employee ownership & saves completion timestamp automatically.
+   */
+  setTaskStatus(taskId: string, status: 'Not Started' | 'In Progress' | 'Completed', user: User): TaskItem {
+    const tasks = this.dataService.getTasksSnapshot();
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) throw new Error('Task not found.');
+
+    // Employees can only update tasks assigned to them
+    const isHostOrHr = user.role === 'super_admin' || user.role === 'hr_admin' || user.role === 'admin';
+    if (!isHostOrHr && task.assignedTo !== user.id) {
+      throw new Error('Permission denied: You can only update tasks assigned to you.');
+    }
+
+    const nowIso = new Date().toISOString();
+    let percentage = task.completionPercentage;
+    let completedAt = task.completedAt;
+
+    if (status === 'Completed') {
+      percentage = 100;
+      completedAt = nowIso;
+      if (task.timerRunning) {
+        this.stopTimer(task.id);
+      }
+      this.dataService.addNotification({
+        id: `notif-${Date.now()}`,
+        recipientId: 'all',
+        senderName: user.name,
+        title: 'Task Completed',
+        message: `${user.name} marked "${task.title}" as Completed.`,
+        type: 'task',
+        link: '/tasks',
+        isRead: false,
+        createdAt: nowIso
+      });
+    } else if (status === 'In Progress') {
+      percentage = percentage === 0 ? 30 : (percentage === 100 ? 70 : percentage);
+      completedAt = undefined;
+    } else if (status === 'Not Started') {
+      percentage = 0;
+      completedAt = undefined;
+      if (task.timerRunning) {
+        this.stopTimer(task.id);
+      }
+    }
+
+    const updated: TaskItem = {
+      ...task,
+      status: status,
+      completionPercentage: percentage,
+      completedAt: completedAt
+    };
+
+    this.dataService.saveTask(updated);
+    return updated;
   }
 
   updateTask(taskId: string, partial: Partial<TaskItem>): TaskItem {
@@ -86,24 +144,12 @@ export class TaskService {
       ...partial
     };
 
-    // If status changed to Completed, ensure completion is 100%
     if (partial.status === 'Completed' && task.status !== 'Completed') {
       updated.completionPercentage = 100;
+      updated.completedAt = new Date().toISOString();
       if (updated.timerRunning) {
         this.stopTimer(task.id);
       }
-      // Notify HR
-      this.dataService.addNotification({
-        id: `notif-${Date.now()}`,
-        recipientId: 'user-admin',
-        senderName: task.assignedToName,
-        title: 'Task Completed',
-        message: `${task.assignedToName} completed "${task.title}".`,
-        type: 'task',
-        link: '/tasks',
-        isRead: false,
-        createdAt: new Date().toISOString()
-      });
     }
 
     this.dataService.saveTask(updated);
@@ -124,7 +170,7 @@ export class TaskService {
 
     const updated: TaskItem = {
       ...task,
-      status: task.status === 'Pending' ? 'In Progress' : task.status,
+      status: task.status === 'Not Started' ? 'In Progress' : task.status,
       timerRunning: true,
       timerStartedAt: new Date().toISOString()
     };
@@ -159,12 +205,14 @@ export class TaskService {
   }
 
   categorizeTasks(tasks: TaskItem[]) {
-    const today = getTodayDateString();
+    const today = getTodayDateStringIST();
 
     const todayTasks = tasks.filter(t => t.dueDate === today && t.status !== 'Completed');
     const overdueTasks = tasks.filter(t => t.dueDate < today && t.status !== 'Completed');
     const upcomingTasks = tasks.filter(t => t.dueDate > today && t.status !== 'Completed');
     const completedTasks = tasks.filter(t => t.status === 'Completed');
+    const notStartedTasks = tasks.filter(t => t.status === 'Not Started' || t.status === 'Pending');
+    const inProgressTasks = tasks.filter(t => t.status === 'In Progress');
 
     const totalEst = tasks.reduce((acc, t) => acc + (t.estimatedHours || 0), 0);
     const totalAct = tasks.reduce((acc, t) => acc + (t.actualHours || 0), 0);
@@ -177,6 +225,8 @@ export class TaskService {
       overdueTasks,
       upcomingTasks,
       completedTasks,
+      notStartedTasks,
+      inProgressTasks,
       totalEst: Math.round(totalEst * 10) / 10,
       totalAct: Math.round(totalAct * 10) / 10,
       completionRate

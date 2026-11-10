@@ -7,6 +7,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { DataService } from '../../../core/services/data.service';
 import { PwaService } from '../../../core/services/pwa.service';
 import { User, NotificationItem } from '../../../core/models';
+import { getCurrentISTTimeString, formatTimeIST } from '../../../core/services/ist-date.utils';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -14,71 +15,72 @@ import { Subscription } from 'rxjs';
   standalone: true,
   imports: [CommonModule, RouterModule, IconComponent],
   template: `
-    <header class="h-16 border-b border-surface-border bg-surface/80 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6">
+    <header class="h-16 border-b border-surface-border bg-surface/85 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6">
       <!-- Left: Mobile Toggle & Brand Context -->
       <div class="flex items-center gap-3">
         <button
           type="button"
           (click)="toggleSidebar.emit()"
-          class="lg:hidden p-2 rounded-lg text-text-secondary hover:text-white hover:bg-white/5 transition-colors"
+          class="lg:hidden p-2 rounded-xl text-text-secondary hover:text-white hover:bg-white/5 transition-colors"
           title="Toggle Navigation"
         >
           <app-icon name="layout-dashboard" [size]="20"></app-icon>
         </button>
 
-        <!-- Connectivity & Live Clock -->
-        <div class="hidden sm:flex items-center gap-4 text-xs">
-          <div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-secondary/70 border border-surface-border">
+        <!-- Live Clock in Indian Standard Time (IST) -->
+        <div class="flex items-center gap-3 text-xs">
+          <div class="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-secondary/70 border border-surface-border">
             <span class="w-2 h-2 rounded-full" [ngClass]="isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'"></span>
             <span class="text-text-secondary font-mono text-[11px]">
-              {{ isOnline ? 'STUDIO MESH ONLINE' : 'OFFLINE MODE' }}
+              {{ isOnline ? 'STUDIO ONLINE' : 'OFFLINE MODE' }}
             </span>
           </div>
 
           <div class="flex items-center gap-1.5 text-text-secondary font-mono">
             <app-icon name="clock" [size]="14" extraClass="text-electric"></app-icon>
-            <span class="text-text-primary font-medium tracking-wider">{{ currentTimeStr }}</span>
+            <span class="text-text-primary font-bold tracking-wider">{{ istClockStr }}</span>
+            <span class="text-[10px] text-text-muted font-bold">IST</span>
           </div>
         </div>
       </div>
 
       <!-- Right: Demo Switcher, Notifications & User Info -->
       <div class="flex items-center gap-3">
-        <!-- Demo Switcher (Instant 1-Click Role/User Switcher) -->
+        <!-- Staff Profile Switcher Dropdown -->
         <div class="relative">
           <button
             type="button"
             (click)="showUserMenu = !showUserMenu; showNotifMenu = false"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-secondary/90 hover:bg-surface-tertiary border border-surface-border hover:border-electric/40 transition-all text-xs cursor-pointer group"
+            class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-surface-secondary/90 hover:bg-surface-tertiary border border-surface-border hover:border-electric/40 transition-all text-xs cursor-pointer group"
           >
             <img
               [src]="currentUser?.avatar"
               [alt]="currentUser?.name"
-              class="w-6 h-6 rounded-full object-cover border border-electric/40 ring-1 ring-electric/20"
+              class="w-7 h-7 rounded-full object-cover border border-electric/40 ring-1 ring-electric/20"
             />
             <div class="text-left hidden md:block">
-              <div class="font-medium text-text-primary leading-tight flex items-center gap-1">
+              <div class="font-bold text-text-primary leading-tight flex items-center gap-1.5">
                 <span>{{ currentUser?.name }}</span>
                 <span
-                  class="text-[9px] uppercase px-1 py-0.2 rounded font-semibold tracking-wider"
-                  [ngClass]="currentUser?.role === 'admin' ? 'bg-violet-500/20 text-violet-300' : 'bg-blue-500/20 text-blue-300'"
+                  class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold tracking-wider"
+                  [ngClass]="getRoleBadgeClass(currentUser?.role)"
                 >
-                  {{ currentUser?.role }}
+                  {{ getRoleLabel(currentUser?.role) }}
                 </span>
               </div>
-              <div class="text-[10px] text-text-muted truncate max-w-[120px]">{{ currentUser?.designation }}</div>
+              <div class="text-[10px] text-text-muted truncate max-w-[140px]">{{ currentUser?.designation }}</div>
             </div>
             <app-icon name="chevron-down" [size]="14" extraClass="text-text-muted group-hover:text-white transition-colors"></app-icon>
           </button>
 
-          <!-- User Switcher Dropdown -->
+          <!-- User Switcher Dropdown Menu -->
           <div
             *ngIf="showUserMenu"
             class="absolute right-0 mt-2 w-72 rounded-2xl bg-surface border border-surface-border-bright shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 backdrop-blur-xl"
           >
             <div class="px-3 py-2 border-b border-surface-border mb-1">
-              <p class="text-xs font-semibold text-text-primary">Switch Demo Profile</p>
-              <p class="text-[11px] text-text-muted">Simulate any creative or HR account</p>
+              <p class="text-xs font-bold text-white">7 Clouds Staff Directory</p>
+              <p class="text-[11px] text-text-muted">Switch active staff session</p>
             </div>
 
             <div class="max-h-64 overflow-y-auto space-y-1">
@@ -88,15 +90,20 @@ import { Subscription } from 'rxjs';
                 class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all text-xs cursor-pointer"
                 [ngClass]="u.id === currentUser?.id ? 'bg-electric/15 text-white border border-electric/30' : 'hover:bg-white/5 text-text-secondary hover:text-white'"
               >
-                <img [src]="u.avatar" [alt]="u.name" class="w-7 h-7 rounded-full object-cover" />
+                <img [src]="u.avatar" [alt]="u.name" class="w-7 h-7 rounded-full object-cover shrink-0" />
                 <div class="flex-1 min-w-0">
-                  <div class="font-medium truncate flex items-center gap-1.5">
-                    <span>{{ u.name }}</span>
-                    <span *ngIf="u.role === 'admin'" class="text-[9px] px-1 py-0.2 rounded bg-violet-500/20 text-violet-300 font-semibold">HR</span>
+                  <div class="font-semibold truncate flex items-center justify-between gap-1">
+                    <span class="truncate">{{ u.name }}</span>
+                    <span
+                      class="text-[9px] px-1 py-0.2 rounded font-bold uppercase shrink-0"
+                      [ngClass]="getRoleBadgeClass(u.role)"
+                    >
+                      {{ getRoleLabel(u.role) }}
+                    </span>
                   </div>
                   <div class="text-[10px] text-text-muted truncate">{{ u.designation }}</div>
                 </div>
-                <app-icon *ngIf="u.id === currentUser?.id" name="check" [size]="14" extraClass="text-electric"></app-icon>
+                <app-icon *ngIf="u.id === currentUser?.id" name="check" [size]="14" extraClass="text-electric shrink-0"></app-icon>
               </button>
             </div>
 
@@ -120,7 +127,7 @@ import { Subscription } from 'rxjs';
           </div>
         </div>
 
-        <!-- Notification Bell & Center -->
+        <!-- Notification Bell -->
         <div class="relative">
           <button
             type="button"
@@ -144,7 +151,7 @@ import { Subscription } from 'rxjs';
           >
             <div class="flex items-center justify-between pb-2 border-b border-surface-border mb-2">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-text-primary">Studio Notifications</span>
+                <span class="text-xs font-bold text-text-primary">Studio Alerts</span>
                 <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-electric/20 text-electric-light">
                   {{ unreadCount }} unread
                 </span>
@@ -190,21 +197,11 @@ import { Subscription } from 'rxjs';
                 (click)="showNotifMenu = false"
                 class="text-xs font-medium text-electric hover:underline"
               >
-                View all notification history →
+                View full notification history →
               </a>
             </div>
           </div>
         </div>
-
-        <!-- Quick Reset Data Button (Helpful for demo & testing) -->
-        <button
-          (click)="resetDemoData()"
-          class="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-secondary/60 hover:bg-surface-secondary border border-surface-border text-text-muted hover:text-amber-300 text-xs transition-colors cursor-pointer"
-          title="Reset to fresh demo sample data"
-        >
-          <app-icon name="sparkles" [size]="14"></app-icon>
-          <span>Reset Demo</span>
-        </button>
       </div>
     </header>
   `
@@ -220,7 +217,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   showUserMenu = false;
   showNotifMenu = false;
   isOnline = true;
-  currentTimeStr: string = '';
+  istClockStr: string = '';
 
   private timerInterval: any;
   private subs: Subscription[] = [];
@@ -261,12 +258,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   private updateClock(): void {
-    const now = new Date();
-    this.currentTimeStr = now.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
+    this.istClockStr = getCurrentISTTimeString();
   }
 
   switchUser(userId: string): void {
@@ -287,19 +279,23 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.notifService.markAllAsRead();
   }
 
-  resetDemoData(): void {
-    if (confirm('Reset workspace to initial demo seed data? All sample records will be restored.')) {
-      this.dataService.resetToDefaults();
-      window.location.reload();
+  getRoleLabel(role?: string): string {
+    if (role === 'super_admin') return 'HOST';
+    if (role === 'hr_admin' || role === 'admin') return 'HR ADMIN';
+    return 'EMPLOYEE';
+  }
+
+  getRoleBadgeClass(role?: string): string {
+    if (role === 'super_admin') {
+      return 'bg-gradient-to-r from-violet-600 to-electric text-white';
     }
+    if (role === 'hr_admin' || role === 'admin') {
+      return 'bg-violet-500/20 text-violet-300';
+    }
+    return 'bg-blue-500/20 text-blue-300';
   }
 
   formatTime(isoStr: string): string {
-    const d = new Date(isoStr);
-    const diff = (Date.now() - d.getTime()) / 60000;
-    if (diff < 1) return 'just now';
-    if (diff < 60) return `${Math.floor(diff)}m ago`;
-    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return formatTimeIST(isoStr);
   }
 }

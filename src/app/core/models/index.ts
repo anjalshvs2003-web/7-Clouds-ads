@@ -1,5 +1,5 @@
-export type UserRole = 'admin' | 'employee';
-export type AccountStatus = 'active' | 'inactive';
+export type UserRole = 'super_admin' | 'hr_admin' | 'employee' | 'admin';
+export type AccountStatus = 'active' | 'inactive' | 'pending_invite';
 
 export interface LeaveBalances {
   casual: number;
@@ -21,6 +21,9 @@ export interface User {
   status: AccountStatus;
   role: UserRole;
   leaveBalances: LeaveBalances;
+  firstLoginRequired?: boolean;
+  passwordHash?: string;
+  invitationLink?: string;
   skills?: string[];
   bio?: string;
   emergencyContact?: {
@@ -47,8 +50,8 @@ export interface AttendanceRecord {
   employeeId: string;
   employeeName: string;
   date: string; // YYYY-MM-DD
-  checkInTime?: string; // ISO
-  checkOutTime?: string; // ISO
+  checkInTime?: string; // ISO / IST
+  checkOutTime?: string; // ISO / IST
   workingHours: number; // decimal hours
   status: AttendanceStatus;
   workLocation: WorkLocation;
@@ -83,14 +86,16 @@ export interface LeaveRequest {
   reason: string;
   attachmentUrl?: string;
   status: LeaveStatus;
-  submittedAt: string; // ISO
+  submittedAt: string; // ISO / IST
   reviewedBy?: string;
   reviewedAt?: string;
   reviewNotes?: string;
 }
 
+// 3 simplified status buttons requested by user:
+// [ Not Started ] [ In Progress ] [ Completed ]
+export type TaskStatus = 'Not Started' | 'In Progress' | 'Completed' | 'Pending' | 'On Hold';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
-export type TaskStatus = 'Pending' | 'In Progress' | 'Completed' | 'On Hold';
 
 export interface TaskItem {
   id: string;
@@ -109,10 +114,11 @@ export interface TaskItem {
   priority: TaskPriority;
   status: TaskStatus;
   completionPercentage: number; // 0 - 100
+  completedAt?: string; // Automatically saved timestamp when marked Completed
   referenceUrl?: string;
   attachments?: string[];
   timerRunning?: boolean;
-  timerStartedAt?: string; // ISO timestamp
+  timerStartedAt?: string;
 }
 
 export type WorkCategory =
@@ -138,7 +144,7 @@ export interface DailyWorkReport {
   taskStatus: 'Completed' | 'In Progress' | 'Blocked' | 'Pending Review';
   referenceUrl?: string;
   attachments?: string[];
-  submittedAt: string; // ISO
+  submittedAt: string;
 }
 
 export interface Announcement {
@@ -148,7 +154,7 @@ export interface Announcement {
   priority: 'Normal' | 'Important' | 'Urgent';
   publishedBy: string;
   publishedByName: string;
-  publishedAt: string; // ISO
+  publishedAt: string;
   pinned: boolean;
   targetAudience: 'all' | 'creative' | 'marketing';
 }
@@ -171,7 +177,7 @@ export interface NotificationItem {
   type: 'attendance' | 'leave' | 'task' | 'report' | 'announcement' | 'system';
   link?: string;
   isRead: boolean;
-  createdAt: string; // ISO
+  createdAt: string;
 }
 
 export interface AuditLog {
@@ -182,7 +188,7 @@ export interface AuditLog {
   targetEntity: string;
   targetId: string;
   details: string;
-  timestamp: string; // ISO
+  timestamp: string;
 }
 
 export interface StudioSettings {

@@ -29,9 +29,9 @@ import {
   providedIn: 'root'
 })
 export class DataService {
-  private readonly STORAGE_PREFIX = '7clouds_';
+  // Use v2 prefix for smooth migration to the official 5 staff members
+  private readonly STORAGE_PREFIX = '7clouds_v2_';
 
-  // BehaviorSubjects for all core collections
   private users$ = new BehaviorSubject<User[]>([]);
   private attendance$ = new BehaviorSubject<AttendanceRecord[]>([]);
   private leaves$ = new BehaviorSubject<LeaveRequest[]>([]);
@@ -49,7 +49,8 @@ export class DataService {
 
   private initializeData(): void {
     const storedUsers = this.getFromStorage<User[]>('users');
-    if (!storedUsers || storedUsers.length === 0) {
+    // If no v2 users or old users found, initialize with official 5 staff
+    if (!storedUsers || storedUsers.length === 0 || !storedUsers.some(u => u.name.includes('Anjalsh') || u.name.includes('Athira'))) {
       this.resetToDefaults();
     } else {
       this.users$.next(storedUsers);
@@ -89,7 +90,6 @@ export class DataService {
     this.settings$.next(INITIAL_SETTINGS);
   }
 
-  // --- LocalStorage helpers ---
   private saveToStorage<T>(key: string, data: T): void {
     try {
       localStorage.setItem(`${this.STORAGE_PREFIX}${key}`, JSON.stringify(data));
@@ -199,6 +199,16 @@ export class DataService {
 
   updateUser(updated: User): void {
     const list = this.users$.value.map(u => (u.id === updated.id ? updated : u));
+    this.users$.next(list);
+    this.saveToStorage('users', list);
+  }
+
+  deleteUser(userId: string): void {
+    const user = this.users$.value.find(u => u.id === userId);
+    if (user?.role === 'super_admin') {
+      throw new Error('The Host / Super Admin account can never be deleted.');
+    }
+    const list = this.users$.value.filter(u => u.id !== userId);
     this.users$.next(list);
     this.saveToStorage('users', list);
   }

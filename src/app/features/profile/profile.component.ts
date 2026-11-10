@@ -12,8 +12,8 @@ import { User } from '../../core/models';
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent, BadgeComponent],
   template: `
-    <div class="space-y-6 max-w-4xl">
-      <!-- Title & Profile Header Card -->
+    <div class="space-y-6 max-w-4xl mx-auto">
+      <!-- Profile Header Card -->
       <div class="glass-panel p-6 sm:p-8 relative overflow-hidden">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-electric/15 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -29,7 +29,10 @@ import { User } from '../../core/models';
               <div>
                 <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center justify-center sm:justify-start gap-2">
                   <span>{{ currentUser?.name }}</span>
-                  <app-badge [label]="currentUser?.role === 'admin' ? 'HR ADMIN' : 'EMPLOYEE'" [variant]="currentUser?.role || 'employee'"></app-badge>
+                  <app-badge
+                    [label]="currentUser?.role === 'super_admin' ? 'HOST / OWNER' : (currentUser?.role === 'hr_admin' ? 'HR ADMIN' : 'STAFF')"
+                    [variant]="currentUser?.role || 'employee'"
+                  ></app-badge>
                 </h1>
                 <p class="text-xs sm:text-sm text-electric font-semibold mt-0.5">{{ currentUser?.designation }}</p>
               </div>
@@ -40,28 +43,78 @@ import { User } from '../../core/models';
             </div>
 
             <p class="text-xs text-text-secondary mt-3 leading-relaxed max-w-2xl">
-              {{ currentUser?.bio || 'Creative practitioner pushing modern visual aesthetics and storytelling at 7 Clouds Studio.' }}
+              {{ currentUser?.bio || 'Creative practitioner at 7 Clouds Studio.' }}
             </p>
 
             <div class="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs text-text-muted font-mono">
-              <span>Department: {{ currentUser?.department }}</span>
+              <span>Phone: {{ currentUser?.phone }}</span>
               <span>•</span>
-              <span>Joined: {{ currentUser?.joiningDate }}</span>
+              <span>Email: {{ currentUser?.email }}</span>
               <span>•</span>
-              <span class="text-emerald-400 font-semibold">Account Status: Active</span>
+              <span class="text-emerald-400 font-semibold">Status: Active</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Edit Profile Details Form -->
+      <!-- Password Setup / Change Section (As requested in user prompt) -->
+      <div class="glass-panel p-6 sm:p-8 space-y-4">
+        <div class="border-b border-surface-border pb-3">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+            <app-icon name="shield" [size]="16" extraClass="text-violet-400"></app-icon>
+            <span>Account Security & Password</span>
+          </h2>
+          <p class="text-[11px] text-text-muted mt-0.5">
+            Set or update your secure account password. Passwords are never exposed in the staff directory.
+          </p>
+        </div>
+
+        <form (ngSubmit)="handlePasswordChange()" class="space-y-4 text-xs max-w-lg">
+          <div>
+            <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
+              New Password
+            </label>
+            <input
+              type="password"
+              [(ngModel)]="newPassword"
+              name="newPassword"
+              required
+              placeholder="Minimum 6 characters"
+              class="input-field"
+            />
+          </div>
+
+          <div>
+            <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              [(ngModel)]="confirmPassword"
+              name="confirmPassword"
+              required
+              placeholder="Re-enter password"
+              class="input-field"
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="btn-primary py-2 px-5 text-xs font-semibold cursor-pointer"
+          >
+            Update Password
+          </button>
+        </form>
+      </div>
+
+      <!-- Edit Contact & Profile Details Form -->
       <form (ngSubmit)="saveProfile()" class="glass-panel p-6 sm:p-8 space-y-6 text-xs">
         <div class="border-b border-surface-border pb-3">
           <h2 class="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
             <app-icon name="user" [size]="16" extraClass="text-electric"></app-icon>
-            <span>Personal & Contact Details</span>
+            <span>Personal & Contact Information</span>
           </h2>
-          <p class="text-[11px] text-text-muted mt-0.5">Keep your emergency contact and creative skills up to date.</p>
+          <p class="text-[11px] text-text-muted mt-0.5">Update phone number, bio and avatar image URL.</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -92,81 +145,20 @@ import { User } from '../../core/models';
 
         <div>
           <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-            Creative Bio / Mission Statement
+            Bio
           </label>
           <textarea
             [(ngModel)]="profileData.bio"
             name="bio"
             rows="3"
             class="input-field"
-            placeholder="Tell us about your creative craft, tools of choice and visual focus..."
+            placeholder="Tell us about your creative focus and production craft..."
           ></textarea>
         </div>
 
-        <div>
-          <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-            Key Software & Skills (comma separated)
-          </label>
-          <input
-            type="text"
-            [(ngModel)]="skillsString"
-            name="skills"
-            class="input-field"
-            placeholder="Premiere Pro, DaVinci Resolve, Cinema 4D, Figma..."
-          />
-        </div>
-
-        <!-- Emergency Contact Section -->
-        <div class="pt-4 border-t border-surface-border space-y-4">
-          <h3 class="text-xs font-bold text-text-primary uppercase tracking-wider font-mono">
-            Emergency Contact Information
-          </h3>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-                Contact Name
-              </label>
-              <input
-                type="text"
-                [(ngModel)]="profileData.emergencyName"
-                name="emergencyName"
-                placeholder="Jane Vance"
-                class="input-field"
-              />
-            </div>
-
-            <div>
-              <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-                Relationship
-              </label>
-              <input
-                type="text"
-                [(ngModel)]="profileData.emergencyRelationship"
-                name="emergencyRelationship"
-                placeholder="Spouse / Parent / Sibling"
-                class="input-field"
-              />
-            </div>
-
-            <div>
-              <label class="block text-text-secondary font-semibold uppercase tracking-wider mb-1.5">
-                Contact Phone
-              </label>
-              <input
-                type="tel"
-                [(ngModel)]="profileData.emergencyPhone"
-                name="emergencyPhone"
-                placeholder="+1 (555) 999-0000"
-                class="input-field font-mono"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div class="pt-4 flex justify-end">
-          <button type="submit" class="btn-primary py-2.5 px-6 font-semibold cursor-pointer">
-            Save Profile Changes
+        <div class="pt-2 flex justify-end">
+          <button type="submit" class="btn-primary py-2 px-6 font-semibold cursor-pointer">
+            Save Profile Details
           </button>
         </div>
       </form>
@@ -175,15 +167,14 @@ import { User } from '../../core/models';
 })
 export class ProfileComponent implements OnInit {
   currentUser: User | null = null;
-  skillsString = '';
+
+  newPassword = '';
+  confirmPassword = '';
 
   profileData = {
     phone: '',
     avatar: '',
-    bio: '',
-    emergencyName: 'Alex Vance',
-    emergencyRelationship: 'Spouse',
-    emergencyPhone: '+1 (555) 911-2233'
+    bio: ''
   };
 
   constructor(
@@ -198,33 +189,35 @@ export class ProfileComponent implements OnInit {
         this.profileData.phone = u.phone || '';
         this.profileData.avatar = u.avatar || '';
         this.profileData.bio = u.bio || '';
-        this.skillsString = (u.skills || []).join(', ');
-        if (u.emergencyContact) {
-          this.profileData.emergencyName = u.emergencyContact.name;
-          this.profileData.emergencyRelationship = u.emergencyContact.relationship;
-          this.profileData.emergencyPhone = u.emergencyContact.phone;
-        }
       }
     });
+  }
+
+  handlePasswordChange(): void {
+    if (!this.newPassword || this.newPassword.length < 4) {
+      this.toastService.error('Password must be at least 4 characters long.');
+      return;
+    }
+    if (this.newPassword !== this.confirmPassword) {
+      this.toastService.error('Passwords do not match.');
+      return;
+    }
+
+    this.authService.changePassword(this.newPassword);
+    this.newPassword = '';
+    this.confirmPassword = '';
+    this.toastService.success('Your password has been successfully updated.');
   }
 
   saveProfile(): void {
     if (!this.currentUser) return;
 
-    const skills = this.skillsString.split(',').map(s => s.trim()).filter(Boolean);
-
     this.authService.updateCurrentUserProfile({
       phone: this.profileData.phone,
       avatar: this.profileData.avatar,
-      bio: this.profileData.bio,
-      skills,
-      emergencyContact: {
-        name: this.profileData.emergencyName,
-        relationship: this.profileData.emergencyRelationship,
-        phone: this.profileData.emergencyPhone
-      }
+      bio: this.profileData.bio
     });
 
-    this.toastService.success('Profile details updated successfully.');
+    this.toastService.success('Profile details saved.');
   }
 }

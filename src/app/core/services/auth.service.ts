@@ -8,12 +8,18 @@ import { DataService } from './data.service';
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly CURRENT_USER_KEY = '7clouds_current_user_id';
+  private readonly CURRENT_USER_KEY = '7clouds_v2_current_user_id';
   private currentUserSubject = new BehaviorSubject<User | null>(null);
 
   currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
   isAuthenticated$: Observable<boolean> = this.currentUser$.pipe(map(u => !!u));
-  isAdmin$: Observable<boolean> = this.currentUser$.pipe(map(u => u?.role === 'admin'));
+
+  // Role streams
+  isAdmin$: Observable<boolean> = this.currentUser$.pipe(
+    map(u => u?.role === 'super_admin' || u?.role === 'hr_admin' || u?.role === 'admin')
+  );
+  isHost$: Observable<boolean> = this.currentUser$.pipe(map(u => u?.role === 'super_admin'));
+  isHr$: Observable<boolean> = this.currentUser$.pipe(map(u => u?.role === 'hr_admin'));
   userRole$: Observable<UserRole | null> = this.currentUser$.pipe(map(u => u?.role ?? null));
 
   constructor(
@@ -33,11 +39,11 @@ export class AuthService {
         return;
       }
     }
-    // Default to admin Elena Rostova if no active session
-    const defaultAdmin = users.find(u => u.role === 'admin') || users[0];
-    if (defaultAdmin) {
-      this.currentUserSubject.next(defaultAdmin);
-      localStorage.setItem(this.CURRENT_USER_KEY, defaultAdmin.id);
+    // Default to Host / Super Admin: Anjalsh V.S
+    const defaultHost = users.find(u => u.role === 'super_admin') || users[0];
+    if (defaultHost) {
+      this.currentUserSubject.next(defaultHost);
+      localStorage.setItem(this.CURRENT_USER_KEY, defaultHost.id);
     }
   }
 
@@ -49,17 +55,47 @@ export class AuthService {
     return this.currentUserSubject.value?.id || '';
   }
 
-  isAdmin(): boolean {
-    return this.currentUserSubject.value?.role === 'admin';
+  isHost(): boolean {
+    return this.currentUserSubject.value?.role === 'super_admin';
   }
 
-  login(email: string, _password?: string): boolean {
+  isHr(): boolean {
+    return this.currentUserSubject.value?.role === 'hr_admin';
+  }
+
+  isAdmin(): boolean {
+    const role = this.currentUserSubject.value?.role;
+    return role === 'super_admin' || role === 'hr_admin' || role === 'admin';
+  }
+
+  isEmployee(): boolean {
+    return this.currentUserSubject.value?.role === 'employee';
+  }
+
+  /**
+   * Permission Check:
+   * Host has complete control over every account.
+   * HR can manage employees, but must NOT be able to delete, deactivate, or modify the Host account!
+   */
+  canManageUser(targetUser: User): boolean {
+    if (this.isHost()) return true;
+    if (this.isHr()) {
+      return targetUser.role !== 'super_admin';
+    }
+    return false;
+  }
+
+  login(identifier: string, _password?: string): boolean {
     const users = this.dataService.getUsersSnapshot();
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const clean = identifier.trim().toLowerCase();
+    // Allow login by email or phone number
+    const user = users.find(
+      u => u.email.toLowerCase() === clean || u.phone === clean
+    );
 
     if (user) {
-      if (user.status !== 'active') {
-        throw new Error('This account has been deactivated. Please contact Studio HR.');
+      if (user.status === 'inactive') {
+        throw new Error('This account has been deactivated. Please contact the Host or Studio HR.');
       }
       this.currentUserSubject.next(user);
       localStorage.setItem(this.CURRENT_USER_KEY, user.id);
@@ -87,6 +123,18 @@ export class AuthService {
     const current = this.getCurrentUser();
     if (!current) return;
     const updated: User = { ...current, ...partial };
+    this.currentUserSubject.next(updated);
+    this.dataService.updateUser(updated);
+  }
+
+  changePassword(newPassword: string): void {
+    const current = this.getCurrentUser();
+    if (!current) return;
+    const updated: User = {
+      ...current,
+      passwordHash: 'hash_' + btoa(newPassword).substring(0, 12),
+      firstLoginRequired: false
+    };
     this.currentUserSubject.next(updated);
     this.dataService.updateUser(updated);
   }

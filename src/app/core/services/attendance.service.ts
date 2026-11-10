@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { AttendanceRecord, AttendanceStatus, User, WorkLocation } from '../models';
 import { DataService } from './data.service';
-import { getTodayDateString } from './mock-data';
+import { getTodayDateStringIST } from './ist-date.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -21,34 +21,31 @@ export class AttendanceService {
   }
 
   getTodayRecord(userId: string): Observable<AttendanceRecord | undefined> {
-    const today = getTodayDateString();
+    const today = getTodayDateStringIST();
     return this.dataService.getAttendance().pipe(
       map(records => records.find(r => r.userId === userId && r.date === today))
     );
   }
 
   getTodayRecordSnapshot(userId: string): AttendanceRecord | undefined {
-    const today = getTodayDateString();
+    const today = getTodayDateStringIST();
     return this.dataService.getAttendanceSnapshot().find(r => r.userId === userId && r.date === today);
   }
 
+  /**
+   * Primary Action: CHECK IN
+   * Records current date and time automatically in IST.
+   * Prevents duplicate check-in.
+   */
   checkIn(user: User, location: WorkLocation = 'Studio / On-Site', notes?: string): AttendanceRecord {
-    const today = getTodayDateString();
+    const today = getTodayDateStringIST();
     const existing = this.getTodayRecordSnapshot(user.id);
 
     if (existing && existing.checkInTime) {
-      throw new Error('You have already checked in for today.');
+      throw new Error('Attendance already recorded: you have already checked in today.');
     }
 
     const now = new Date();
-    const settings = this.dataService.getSettingsSnapshot();
-
-    // Check if after cutoff time
-    const [cutoffHour, cutoffMinute] = settings.attendanceCutoffTime.split(':').map(Number);
-    const cutoffDate = new Date();
-    cutoffDate.setHours(cutoffHour, cutoffMinute, 0, 0);
-
-    const isLate = now.getTime() > cutoffDate.getTime();
     const status: AttendanceStatus = location === 'Work From Home' ? 'Work From Home' : 'Present';
 
     const newRecord: AttendanceRecord = {
@@ -61,18 +58,25 @@ export class AttendanceService {
       workingHours: 0,
       status: status,
       workLocation: location,
-      notes: notes || (isLate ? 'Checked in after standard cutoff time' : undefined)
+      notes: notes || undefined
     };
 
     this.dataService.saveAttendanceRecord(newRecord);
 
-    // Notify HR / Admins
+    // Notify Host & HR Admin
+    const timeFormatted = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(now);
+
     this.dataService.addNotification({
       id: `notif-${Date.now()}`,
-      recipientId: 'user-admin',
+      recipientId: 'all',
       senderName: user.name,
       title: 'Employee Check-in',
-      message: `${user.name} checked in at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${location}).`,
+      message: `${user.name} checked in at ${timeFormatted} IST (${location}).`,
       type: 'attendance',
       link: '/attendance',
       isRead: false,
@@ -82,6 +86,11 @@ export class AttendanceService {
     return newRecord;
   }
 
+  /**
+   * Primary Action: CHECK OUT
+   * Records checkout time and calculates exact working hours.
+   * Disables checkout and marks shift completed.
+   */
   checkOut(recordId: string, notes?: string): AttendanceRecord {
     const records = this.dataService.getAttendanceSnapshot();
     const record = records.find(r => r.id === recordId);
@@ -90,7 +99,7 @@ export class AttendanceService {
       throw new Error('Attendance record not found.');
     }
     if (record.checkOutTime) {
-      throw new Error('You have already checked out today.');
+      throw new Error('Shift already completed: you have already checked out today.');
     }
 
     const now = new Date();
@@ -114,13 +123,19 @@ export class AttendanceService {
 
     this.dataService.saveAttendanceRecord(updated);
 
-    // Notify HR
+    const timeFormatted = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(now);
+
     this.dataService.addNotification({
       id: `notif-${Date.now()}`,
-      recipientId: 'user-admin',
+      recipientId: 'all',
       senderName: record.employeeName,
       title: 'Employee Checked Out',
-      message: `${record.employeeName} completed their session (${hours} hrs logged).`,
+      message: `${record.employeeName} checked out at ${timeFormatted} IST (${hours} hrs worked).`,
       type: 'attendance',
       link: '/attendance',
       isRead: false,
@@ -130,6 +145,9 @@ export class AttendanceService {
     return updated;
   }
 
+  /**
+   * Correction by Host / HR Admin with audit logging
+   */
   correctAttendance(
     recordId: string,
     updates: Partial<AttendanceRecord>,
@@ -152,23 +170,21 @@ export class AttendanceService {
 
     this.dataService.saveAttendanceRecord(updated);
 
-    // Audit Log entry
     this.dataService.logAction({
       actorId: adminUser.id,
       actorName: adminUser.name,
       action: 'CORRECTED_ATTENDANCE',
       targetEntity: 'AttendanceRecord',
       targetId: recordId,
-      details: `Corrected attendance for ${record.employeeName} on ${record.date}. Reason: ${reason}`
+      details: `Corrected attendance for ${record.employeeName} on ${record.date}. Status: ${updates.status || record.status}, Hours: ${updates.workingHours || record.workingHours}. Reason: ${reason}`
     });
 
-    // Notify employee of correction
     this.dataService.addNotification({
       id: `notif-${Date.now()}`,
       recipientId: record.userId,
       senderName: adminUser.name,
-      title: 'Attendance Record Updated by HR',
-      message: `Your attendance record for ${record.date} was updated by ${adminUser.name}. Note: ${reason}`,
+      title: 'Attendance Corrected by HR/Host',
+      message: `Your attendance for ${record.date} was updated by ${adminUser.name}. Note: ${reason}`,
       type: 'attendance',
       link: '/attendance',
       isRead: false,

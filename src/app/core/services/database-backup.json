@@ -1,0 +1,63 @@
+{
+  "backupDate": "2026-11-10T12:00:00+05:30",
+  "reason": "Official Staff Directory Migration - 7 Clouds Creative Studio",
+  "legacyUsers": [
+    {
+      "id": "user-admin",
+      "employeeId": "7C-HR001",
+      "name": "Elena Rostova",
+      "email": "elena@7clouds.studio",
+      "designation": "Studio Director & HR Lead",
+      "department": "Management / HR",
+      "role": "admin"
+    },
+    {
+      "id": "user-emp-1",
+      "employeeId": "7C-CR001",
+      "name": "Leo Vance",
+      "email": "leo@7clouds.studio",
+      "designation": "Lead Video Editor",
+      "role": "employee"
+    },
+    {
+      "id": "user-emp-2",
+      "employeeId": "7C-CR002",
+      "name": "Maya Chen",
+      "email": "maya@7clouds.studio",
+      "designation": "Senior Graphic Designer",
+      "role": "employee"
+    },
+    {
+      "id": "user-emp-3",
+      "employeeId": "7C-CR003",
+      "name": "Kai Thorne",
+      "email": "kai@7clouds.studio",
+      "designation": "Motion & 3D Artist",
+      "role": "employee"
+    },
+    {
+      "id": "user-emp-4",
+      "employeeId": "7C-CR004",
+      "name": "Zara Al-Mansoor",
+      "email": "zara@7clouds.studio",
+      "designation": "Digital Marketing Strategist",
+      "role": "employee"
+    },
+    {
+      "id": "user-emp-5",
+      "employeeId": "7C-CR005",
+      "name": "Liam O’Connor",
+      "email": "liam@7clouds.studio",
+      "designation": "Senior Photographer & DP",
+      "role": "employee"
+    },
+    {
+      "id": "user-emp-6",
+      "employeeId": "7C-CR006",
+      "name": "Chloe Dubois",
+      "email": "chloe@7clouds.studio",
+      "designation": "Creative Content Producer",
+      "role": "employee"
+    }
+  ]
+}

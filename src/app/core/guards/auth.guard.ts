@@ -18,12 +18,23 @@ export const adminGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  const user = authService.getCurrentUser();
-  if (user && user.role === 'admin') {
+  if (authService.isAdmin()) {
     return true;
   }
 
-  // If not admin, redirect to employee home dashboard
+  // Employees are redirected to their personal dashboard
+  router.navigate(['/dashboard']);
+  return false;
+};
+
+export const hostGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isHost()) {
+    return true;
+  }
+
   router.navigate(['/dashboard']);
   return false;
 };

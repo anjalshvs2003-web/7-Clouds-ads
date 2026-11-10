@@ -26,9 +26,9 @@ import { Subscription } from 'rxjs';
           <div>
             <div class="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
               <span>7 CLOUDS</span>
-              <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-electric/20 text-electric-light font-mono font-semibold">STUDIO</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-electric/20 text-electric-light font-mono font-semibold">ADS</span>
             </div>
-            <div class="text-[10px] text-text-muted tracking-wider uppercase">Creative Workspace</div>
+            <div class="text-[10px] text-text-muted tracking-wider uppercase">Attendance & Tasks</div>
           </div>
         </a>
 
@@ -43,10 +43,10 @@ import { Subscription } from 'rxjs';
 
       <!-- Navigation Links Container -->
       <div class="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        <!-- Main Workspace -->
+        <!-- Personal Workspace (Accessible to everyone) -->
         <div>
           <div class="px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-widest font-mono">
-            Creative Workspace
+            My Workspace
           </div>
           <nav class="space-y-1">
             <a
@@ -92,17 +92,7 @@ import { Subscription } from 'rxjs';
               class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-transparent transition-all group"
             >
               <app-icon name="briefcase" [size]="18" extraClass="text-text-muted group-hover:text-electric transition-colors"></app-icon>
-              <span>Leave System</span>
-            </a>
-
-            <a
-              routerLink="/work-reports"
-              routerLinkActive="bg-electric/15 text-white border-electric/40 shadow-glow-sm font-semibold"
-              (click)="closeSidebar.emit()"
-              class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-transparent transition-all group"
-            >
-              <app-icon name="file-text" [size]="18" extraClass="text-text-muted group-hover:text-electric transition-colors"></app-icon>
-              <span>Work Reports</span>
+              <span>Leave Requests</span>
             </a>
 
             <a
@@ -137,11 +127,13 @@ import { Subscription } from 'rxjs';
           </nav>
         </div>
 
-        <!-- HR & Studio Management Section (Admin Only) -->
+        <!-- Studio Administration (Host & HR Admin Only) -->
         <div *ngIf="isAdmin">
           <div class="px-3 mb-2 flex items-center justify-between text-[10px] font-bold text-violet-400 uppercase tracking-widest font-mono">
-            <span>Studio Operations</span>
-            <span class="px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 text-[9px]">HR</span>
+            <span>{{ isHost ? 'HOST & MANAGEMENT' : 'HR MANAGEMENT' }}</span>
+            <span class="px-1.5 py-0.2 rounded bg-violet-500/20 text-violet-300 text-[9px]">
+              {{ isHost ? 'HOST' : 'HR' }}
+            </span>
           </div>
           <nav class="space-y-1">
             <a
@@ -151,7 +143,7 @@ import { Subscription } from 'rxjs';
               class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-transparent transition-all group"
             >
               <app-icon name="shield" [size]="18" extraClass="text-violet-400 group-hover:text-violet-300 transition-colors"></app-icon>
-              <span>HR Command Center</span>
+              <span>{{ isHost ? 'Host Command Center' : 'HR Overview' }}</span>
             </a>
 
             <a
@@ -161,7 +153,7 @@ import { Subscription } from 'rxjs';
               class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-transparent transition-all group"
             >
               <app-icon name="users" [size]="18" extraClass="text-violet-400 group-hover:text-violet-300 transition-colors"></app-icon>
-              <span>Creative Team</span>
+              <span>Staff Accounts</span>
             </a>
 
             <a
@@ -171,7 +163,7 @@ import { Subscription } from 'rxjs';
               class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-text-secondary hover:text-white hover:bg-white/5 border border-transparent transition-all group"
             >
               <app-icon name="bar-chart-2" [size]="18" extraClass="text-violet-400 group-hover:text-violet-300 transition-colors"></app-icon>
-              <span>Monthly Reports</span>
+              <span>Attendance Reports</span>
             </a>
 
             <a
@@ -197,37 +189,41 @@ import { Subscription } from 'rxjs';
         </div>
       </div>
 
-      <!-- Bottom Card: Current Attendance & PWA Install -->
+      <!-- Bottom Card: Simplified Today Attendance Indicator & PWA -->
       <div class="p-3 border-t border-surface-border bg-surface-secondary/40 space-y-2">
         <div class="p-3 rounded-xl bg-surface border border-surface-border text-xs">
           <div class="flex items-center justify-between mb-1.5">
             <span class="text-text-muted text-[11px]">Today's Status</span>
             <span
               class="px-2 py-0.5 rounded-full text-[10px] font-semibold"
-              [ngClass]="todayRecord?.checkInTime ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'"
+              [ngClass]="todayRecord?.checkInTime ? (todayRecord?.checkOutTime ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400') : 'bg-amber-500/10 text-amber-400'"
             >
-              {{ todayRecord?.status || 'Not Checked In' }}
+              {{ todayRecord?.checkOutTime ? 'Completed' : (todayRecord?.checkInTime ? 'Checked In' : 'Not Checked In') }}
             </span>
           </div>
 
-          <!-- Quick Action Button -->
           <div *ngIf="!todayRecord?.checkInTime">
             <a
               routerLink="/attendance"
               class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-electric text-white text-xs font-medium hover:bg-electric-hover transition-colors shadow-glow-sm"
             >
-              <app-icon name="clock" [size]="14"></app-icon>
-              <span>Quick Check-In</span>
+              <app-icon name="play" [size]="13"></app-icon>
+              <span>CHECK IN</span>
             </a>
           </div>
 
-          <div *ngIf="todayRecord?.checkInTime && !todayRecord?.checkOutTime" class="flex items-center justify-between text-[11px] pt-1">
-            <span class="text-text-secondary font-mono">Working Active</span>
-            <a routerLink="/attendance" class="text-electric hover:underline font-medium">Log Check-Out →</a>
+          <div *ngIf="todayRecord?.checkInTime && !todayRecord?.checkOutTime">
+            <a
+              routerLink="/attendance"
+              class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium transition-colors shadow-sm"
+            >
+              <app-icon name="square" [size]="13"></app-icon>
+              <span>CHECK OUT</span>
+            </a>
           </div>
 
-          <div *ngIf="todayRecord?.checkOutTime" class="text-[11px] text-text-muted">
-            Shift complete ({{ todayRecord?.workingHours }} hrs)
+          <div *ngIf="todayRecord?.checkOutTime" class="text-[11px] text-text-muted text-center pt-0.5">
+            Shift complete ({{ todayRecord?.workingHours }}h)
           </div>
         </div>
 
@@ -237,7 +233,7 @@ import { Subscription } from 'rxjs';
           class="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-surface-tertiary hover:bg-surface-secondary border border-surface-border text-text-primary text-xs transition-colors cursor-pointer"
         >
           <app-icon name="download" [size]="14" extraClass="text-electric"></app-icon>
-          <span>Install Studio App</span>
+          <span>Install App</span>
         </button>
       </div>
     </aside>
@@ -256,6 +252,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   currentUser: User | null = null;
   isAdmin = false;
+  isHost = false;
   todayRecord: AttendanceRecord | undefined;
   canInstallPwa = false;
 
@@ -271,7 +268,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     this.subs.push(
       this.authService.currentUser$.subscribe(u => {
         this.currentUser = u;
-        this.isAdmin = u?.role === 'admin';
+        this.isAdmin = this.authService.isAdmin();
+        this.isHost = this.authService.isHost();
         if (u) {
           this.loadTodayAttendance(u.id);
         }

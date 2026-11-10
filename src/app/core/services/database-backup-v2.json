@@ -1,0 +1,56 @@
+{
+  "backupTimestamp": "2026-11-10T12:16:00+05:30",
+  "reason": "Pre-Host-Private-Separation & Public-Employee-Registration Backup",
+  "previousStaffAccounts": [
+    {
+      "id": "user-anjalsh",
+      "employeeId": "7C-HOST001",
+      "name": "Anjalsh V.S",
+      "email": "anjalsh@7clouds.studio",
+      "phone": "8086351883",
+      "designation": "Senior Video Editor",
+      "role": "super_admin",
+      "status": "active"
+    },
+    {
+      "id": "user-athira",
+      "employeeId": "7C-HR001",
+      "name": "Athira Girish",
+      "email": "athira@7clouds.studio",
+      "phone": "9847921883",
+      "designation": "HR",
+      "role": "hr_admin",
+      "status": "active"
+    },
+    {
+      "id": "user-adithya",
+      "employeeId": "7C-EMP001",
+      "name": "Adithya Kumar",
+      "email": "adithya@7clouds.studio",
+      "phone": "8078415501",
+      "designation": "Video Editor",
+      "role": "employee",
+      "status": "active"
+    },
+    {
+      "id": "user-nehil",
+      "employeeId": "7C-EMP002",
+      "name": "Nehil",
+      "email": "nehil@7clouds.studio",
+      "phone": "9605770326",
+      "designation": "Graphics Designer",
+      "role": "employee",
+      "status": "active"
+    },
+    {
+      "id": "user-nadiya",
+      "employeeId": "7C-EMP003",
+      "name": "Nadiya",
+      "email": "nadiya@7clouds.studio",
+      "phone": "9846084217",
+      "designation": "Junior Video Editor",
+      "role": "employee",
+      "status": "active"
+    }
+  ]
+}

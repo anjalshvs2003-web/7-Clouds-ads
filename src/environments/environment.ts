@@ -10,5 +10,26 @@ export const environment = {
     measurementId: "G-7CLOUDS2026"
   },
   fcmVapidKey: "BEl_7CloudsStudioPublicVapidKeyForPushNotificationsSimulated2026",
-  useFirebaseBackend: false // Defaults to seamless local reactive simulation with full persistent data & live mode switcher
+  useFirebaseBackend: false, // Defaults to seamless local reactive simulation with full persistent data & live mode switcher
+  // Private Host Account Security Configuration
+  // Completely isolated from public employee directories and registration
+  hostSecurity: {
+    hostId: 'host-root-master-001',
+    systemId: '7C-HOST-SECURE',
+    displayName: 'Host Administrator',
+    secretIdentifier: 'host@7clouds.internal',
+    accessKey: 'Host#7Clouds2026',
+    portalAccessCode: '7CLOUDS-HOST-ACCESS',
+    role: 'HOST'
+  },
+  hostConfig: {
+    hostId: 'host-root-master-001',
+    systemId: '7C-HOST-SECURE',
+    displayName: 'Host Administrator',
+    secretIdentifier: 'host@7clouds.internal',
+    accessKey: 'Host#7Clouds2026',
+    portalAccessCode: '7CLOUDS-HOST-ACCESS',
+    role: 'HOST'
+  }
 };
+

@@ -56,9 +56,9 @@ export function formatTimeIST(isoStr?: string): string {
   }).format(d);
 }
 
-export function formatDateTimeIST(isoStr?: string): string {
-  if (!isoStr) return '--';
-  const d = new Date(isoStr);
+export function formatDateTimeIST(dateOrIso?: string | Date): string {
+  if (!dateOrIso) return '--';
+  const d = typeof dateOrIso === 'string' ? new Date(dateOrIso) : dateOrIso;
   if (isNaN(d.getTime())) return '--';
   return new Intl.DateTimeFormat('en-IN', {
     timeZone: 'Asia/Kolkata',

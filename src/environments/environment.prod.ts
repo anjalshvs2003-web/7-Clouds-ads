@@ -10,5 +10,25 @@ export const environment = {
     measurementId: "G-7CLOUDS2026"
   },
   fcmVapidKey: "BEl_7CloudsStudioPublicVapidKeyForPushNotificationsSimulated2026",
-  useFirebaseBackend: false
+  useFirebaseBackend: false,
+  // Private Host Account Security Configuration
+  hostSecurity: {
+    hostId: 'host-root-master-001',
+    systemId: '7C-HOST-SECURE',
+    displayName: 'Host Administrator',
+    secretIdentifier: 'host@7clouds.internal',
+    accessKey: 'Host#7Clouds2026',
+    portalAccessCode: '7CLOUDS-HOST-ACCESS',
+    role: 'HOST'
+  },
+  hostConfig: {
+    hostId: 'host-root-master-001',
+    systemId: '7C-HOST-SECURE',
+    displayName: 'Host Administrator',
+    secretIdentifier: 'host@7clouds.internal',
+    accessKey: 'Host#7Clouds2026',
+    portalAccessCode: '7CLOUDS-HOST-ACCESS',
+    role: 'HOST'
+  }
 };
+

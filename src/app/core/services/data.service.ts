@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, map } from 'rxjs';
 import {
   User,
   AttendanceRecord,
@@ -25,12 +25,15 @@ import {
   INITIAL_SETTINGS
 } from './mock-data';
 
+import { hashPassword } from './security.utils';
+import { formatDateTimeIST, getTodayDateStringIST } from './ist-date.utils';
+
 @Injectable({
   providedIn: 'root'
 })
 export class DataService {
-  // Use v2 prefix for smooth migration to the official 5 staff members
-  private readonly STORAGE_PREFIX = '7clouds_v2_';
+  // Use v3 prefix for private Host account + public employee registration system
+  private readonly STORAGE_PREFIX = '7clouds_v3_';
 
   private users$ = new BehaviorSubject<User[]>([]);
   private attendance$ = new BehaviorSubject<AttendanceRecord[]>([]);
@@ -49,8 +52,8 @@ export class DataService {
 
   private initializeData(): void {
     const storedUsers = this.getFromStorage<User[]>('users');
-    // If no v2 users or old users found, initialize with official 5 staff
-    if (!storedUsers || storedUsers.length === 0 || !storedUsers.some(u => u.name.includes('Anjalsh') || u.name.includes('Athira'))) {
+    // If no v3 users found or old Host name was embedded in users, initialize clean staff directory
+    if (!storedUsers || storedUsers.some(u => u.name.includes('Anjalsh') || u.role === 'HOST' || (u.role as string) === 'super_admin')) {
       this.resetToDefaults();
     } else {
       this.users$.next(storedUsers);
@@ -110,7 +113,28 @@ export class DataService {
 
   // --- Observables Getters ---
   getUsers(): Observable<User[]> {
-    return this.users$.asObservable();
+    // Strictly exclude any Host account from staff directories
+    return this.users$.pipe(
+      map(users => users.filter(u => u.role !== 'HOST' && (u.role as string) !== 'super_admin'))
+    );
+  }
+
+  getRegisteredEmployees(): Observable<User[]> {
+    return this.users$.pipe(
+      map(users => users.filter(u => u.role !== 'HOST' && (u.role as string) !== 'super_admin'))
+    );
+  }
+
+  getPendingRegistrations(): Observable<User[]> {
+    return this.users$.pipe(
+      map(users => users.filter(u => u.status === 'pending_approval'))
+    );
+  }
+
+  getActiveEmployees(): Observable<User[]> {
+    return this.users$.pipe(
+      map(users => users.filter(u => u.status === 'active' && u.role !== 'HOST' && (u.role as string) !== 'super_admin'))
+    );
   }
 
   getAttendance(): Observable<AttendanceRecord[]> {
@@ -205,13 +229,149 @@ export class DataService {
 
   deleteUser(userId: string): void {
     const user = this.users$.value.find(u => u.id === userId);
-    if (user?.role === 'super_admin') {
+    if (user?.role === 'HOST' || (user?.role as string) === 'super_admin') {
       throw new Error('The Host / Super Admin account can never be deleted.');
     }
     const list = this.users$.value.filter(u => u.id !== userId);
     this.users$.next(list);
     this.saveToStorage('users', list);
   }
+
+  // --- Employee Registration & Host Approval System ---
+  generateNextEmployeeId(): string {
+    const users = this.users$.value;
+    let maxNum = 0;
+    for (const u of users) {
+      if (u.employeeId && u.employeeId.startsWith('7C-EMP')) {
+        const numPart = parseInt(u.employeeId.replace('7C-EMP', ''), 10);
+        if (!isNaN(numPart) && numPart > maxNum) {
+          maxNum = numPart;
+        }
+      }
+    }
+    const nextNum = (maxNum + 1).toString().padStart(3, '0');
+    return `7C-EMP${nextNum}`;
+  }
+
+  registerEmployee(data: {
+    name: string;
+    phone: string;
+    designation: string;
+    email: string;
+    password: string;
+  }): User {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const cleanPhone = data.phone.trim();
+    const users = this.users$.value;
+
+    // Check duplicate
+    if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+      throw new Error(`An account with email '${data.email}' is already registered.`);
+    }
+    if (users.some(u => u.phone === cleanPhone)) {
+      throw new Error(`An account with phone number '${data.phone}' is already registered.`);
+    }
+
+    const employeeId = this.generateNextEmployeeId();
+    const newUser: User = {
+      id: 'user-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      employeeId,
+      name: data.name.trim(),
+      email: cleanEmail,
+      phone: cleanPhone,
+      designation: data.designation.trim() || 'Staff Specialist',
+      department: 'Creative Studio',
+      joiningDate: getTodayDateStringIST(),
+      status: 'pending_approval',
+      role: 'EMPLOYEE',
+      passwordHash: hashPassword(data.password),
+      registeredAt: formatDateTimeIST(new Date()),
+      registeredViaPublicForm: true,
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      leaveBalances: { casual: 12, sick: 10, emergency: 5, total: 27 },
+      skills: ['Workspace Operations'],
+      bio: 'Registered staff specialist at 7 Clouds Studio.'
+    };
+
+    this.addUser(newUser);
+
+    // Create notification for Host
+    this.addNotification({
+      id: 'notif-' + Date.now(),
+      recipientId: 'all',
+      title: 'New Registration Pending Approval',
+      message: `${newUser.name} (${newUser.designation}) registered and is awaiting Host approval.`,
+      createdAt: formatDateTimeIST(new Date()),
+      isRead: false,
+      type: 'system',
+      link: '/employees'
+    });
+
+    return newUser;
+  }
+
+  approveRegistration(userId: string): void {
+    const user = this.users$.value.find(u => u.id === userId);
+    if (!user) return;
+    const updated: User = {
+      ...user,
+      status: 'active',
+      approvedAt: formatDateTimeIST(new Date())
+    };
+    this.updateUser(updated);
+
+    this.addNotification({
+      id: 'notif-' + Date.now(),
+      recipientId: 'all',
+      title: 'Employee Approved',
+      message: `${user.name} (${user.employeeId}) has been approved by the Host and can now log in.`,
+      createdAt: formatDateTimeIST(new Date()),
+      isRead: false,
+      type: 'system'
+    });
+  }
+
+  rejectRegistration(userId: string, reason: string = 'Registration not approved'): void {
+    const user = this.users$.value.find(u => u.id === userId);
+    if (!user) return;
+    const updated: User = {
+      ...user,
+      status: 'rejected',
+      rejectedReason: reason
+    };
+    this.updateUser(updated);
+  }
+
+  promoteToHr(userId: string): void {
+    const user = this.users$.value.find(u => u.id === userId);
+    if (!user) return;
+    const updated: User = {
+      ...user,
+      role: 'HR ADMIN'
+    };
+    this.updateUser(updated);
+
+    this.addNotification({
+      id: 'notif-' + Date.now(),
+      recipientId: 'all',
+      title: 'HR Role Assigned',
+      message: `${user.name} was promoted to HR Admin by the Host.`,
+      createdAt: formatDateTimeIST(new Date()),
+      isRead: false,
+      type: 'system'
+    });
+  }
+
+  demoteToEmployee(userId: string): void {
+    const user = this.users$.value.find(u => u.id === userId);
+    if (!user) return;
+    const updated: User = {
+      ...user,
+      role: 'EMPLOYEE'
+    };
+    this.updateUser(updated);
+  }
+
 
   // --- Attendance Operations ---
   saveAttendanceRecord(record: AttendanceRecord): void {

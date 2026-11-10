@@ -1,5 +1,18 @@
-export type UserRole = 'super_admin' | 'hr_admin' | 'employee' | 'admin';
-export type AccountStatus = 'active' | 'inactive' | 'pending_invite';
+export type UserRole =
+  | 'HOST'
+  | 'HR ADMIN'
+  | 'EMPLOYEE'
+  | 'super_admin'
+  | 'hr_admin'
+  | 'employee'
+  | 'admin';
+
+export type AccountStatus =
+  | 'pending_approval'
+  | 'active'
+  | 'inactive'
+  | 'rejected'
+  | 'pending_invite';
 
 export interface LeaveBalances {
   casual: number;
@@ -24,6 +37,10 @@ export interface User {
   firstLoginRequired?: boolean;
   passwordHash?: string;
   invitationLink?: string;
+  registeredAt?: string;
+  approvedAt?: string;
+  rejectedReason?: string;
+  registeredViaPublicForm?: boolean;
   skills?: string[];
   bio?: string;
   emergencyContact?: {

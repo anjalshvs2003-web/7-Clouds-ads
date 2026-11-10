@@ -262,8 +262,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   switchUser(userId: string): void {
-    this.authService.switchUser(userId);
-    this.showUserMenu = false;
+    const user = this.allUsers.find(u => u.id === userId && u.status === 'active');
+    if (user) {
+      localStorage.setItem('7clouds_v3_session', user.id);
+      window.location.reload();
+    }
   }
 
   logout(): void {
@@ -280,16 +283,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   getRoleLabel(role?: string): string {
-    if (role === 'super_admin') return 'HOST';
-    if (role === 'hr_admin' || role === 'admin') return 'HR ADMIN';
+    if (role === 'HOST' || role === 'super_admin') return 'HOST';
+    if (role === 'HR ADMIN' || role === 'hr_admin' || role === 'admin') return 'HR ADMIN';
     return 'EMPLOYEE';
   }
 
   getRoleBadgeClass(role?: string): string {
-    if (role === 'super_admin') {
+    if (role === 'HOST' || role === 'super_admin') {
       return 'bg-gradient-to-r from-violet-600 to-electric text-white';
     }
-    if (role === 'hr_admin' || role === 'admin') {
+    if (role === 'HR ADMIN' || role === 'hr_admin' || role === 'admin') {
       return 'bg-violet-500/20 text-violet-300';
     }
     return 'bg-blue-500/20 text-blue-300';

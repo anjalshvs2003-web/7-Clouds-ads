@@ -3,23 +3,55 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, map } from 'rxjs';
 import { User, UserRole } from '../models';
 import { DataService } from './data.service';
+import { environment } from '../../../environments/environment';
+import { verifyPassword, hashPassword } from './security.utils';
+
+/**
+ * Permanent Private Host Identity
+ * Isolated from public employee databases, directory lists, and public APIs.
+ */
+export const PRIVATE_HOST_USER: User = {
+  id: environment.hostConfig?.hostId || 'host-root-master-001',
+  employeeId: environment.hostConfig?.systemId || '7C-HOST-SECURE',
+  name: environment.hostConfig?.displayName || 'Host Administrator',
+  email: environment.hostConfig?.secretIdentifier || 'host@7clouds.internal',
+  avatar: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80',
+  phone: 'Secured Host Line',
+  designation: 'Workspace Host & Super Admin',
+  department: 'Studio Administration',
+  joiningDate: '2023-01-01',
+  status: 'active',
+  role: 'HOST',
+  leaveBalances: { casual: 99, sick: 99, emergency: 99, total: 297 },
+  skills: ['Studio Leadership', 'Workspace Architecture', 'Full Administrative Authority']
+};
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly CURRENT_USER_KEY = '7clouds_v2_current_user_id';
+  private readonly CURRENT_USER_KEY = '7clouds_v3_session';
   private currentUserSubject = new BehaviorSubject<User | null>(null);
 
   currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
   isAuthenticated$: Observable<boolean> = this.currentUser$.pipe(map(u => !!u));
 
   // Role streams
-  isAdmin$: Observable<boolean> = this.currentUser$.pipe(
-    map(u => u?.role === 'super_admin' || u?.role === 'hr_admin' || u?.role === 'admin')
+  isHost$: Observable<boolean> = this.currentUser$.pipe(
+    map(u => u?.role === 'HOST' || (u?.role as string) === 'super_admin')
   );
-  isHost$: Observable<boolean> = this.currentUser$.pipe(map(u => u?.role === 'super_admin'));
-  isHr$: Observable<boolean> = this.currentUser$.pipe(map(u => u?.role === 'hr_admin'));
+  isHr$: Observable<boolean> = this.currentUser$.pipe(
+    map(u => u?.role === 'HR ADMIN' || (u?.role as string) === 'hr_admin')
+  );
+  isAdmin$: Observable<boolean> = this.currentUser$.pipe(
+    map(u => {
+      const r = u?.role;
+      return r === 'HOST' || r === 'super_admin' || r === 'HR ADMIN' || r === 'hr_admin' || r === 'admin';
+    })
+  );
+  isEmployee$: Observable<boolean> = this.currentUser$.pipe(
+    map(u => u?.role === 'EMPLOYEE' || (u?.role as string) === 'employee')
+  );
   userRole$: Observable<UserRole | null> = this.currentUser$.pipe(map(u => u?.role ?? null));
 
   constructor(
@@ -30,20 +62,21 @@ export class AuthService {
   }
 
   private restoreSession(): void {
-    const savedUserId = localStorage.getItem(this.CURRENT_USER_KEY);
-    const users = this.dataService.getUsersSnapshot();
-    if (savedUserId) {
-      const found = users.find(u => u.id === savedUserId && u.status === 'active');
-      if (found) {
-        this.currentUserSubject.next(found);
-        return;
-      }
+    const savedToken = localStorage.getItem(this.CURRENT_USER_KEY);
+    if (!savedToken) return;
+
+    if (savedToken === 'host' || savedToken === PRIVATE_HOST_USER.id) {
+      this.currentUserSubject.next(PRIVATE_HOST_USER);
+      return;
     }
-    // Default to Host / Super Admin: Anjalsh V.S
-    const defaultHost = users.find(u => u.role === 'super_admin') || users[0];
-    if (defaultHost) {
-      this.currentUserSubject.next(defaultHost);
-      localStorage.setItem(this.CURRENT_USER_KEY, defaultHost.id);
+
+    const users = this.dataService.getUsersSnapshot();
+    const found = users.find(u => u.id === savedToken);
+    if (found && found.status === 'active') {
+      this.currentUserSubject.next(found);
+    } else {
+      // Clear invalid or pending session
+      localStorage.removeItem(this.CURRENT_USER_KEY);
     }
   }
 
@@ -56,61 +89,131 @@ export class AuthService {
   }
 
   isHost(): boolean {
-    return this.currentUserSubject.value?.role === 'super_admin';
+    const role = this.currentUserSubject.value?.role;
+    return role === 'HOST' || (role as string) === 'super_admin';
   }
 
   isHr(): boolean {
-    return this.currentUserSubject.value?.role === 'hr_admin';
+    const role = this.currentUserSubject.value?.role;
+    return role === 'HR ADMIN' || (role as string) === 'hr_admin';
   }
 
   isAdmin(): boolean {
-    const role = this.currentUserSubject.value?.role;
-    return role === 'super_admin' || role === 'hr_admin' || role === 'admin';
+    return this.isHost() || this.isHr();
   }
 
   isEmployee(): boolean {
-    return this.currentUserSubject.value?.role === 'employee';
+    const role = this.currentUserSubject.value?.role;
+    return role === 'EMPLOYEE' || (role as string) === 'employee';
   }
 
   /**
-   * Permission Check:
-   * Host has complete control over every account.
-   * HR can manage employees, but must NOT be able to delete, deactivate, or modify the Host account!
+   * Permissions Check
+   * Host has full control over all employee records and settings.
+   * HR Admin can only view and manage employee tasks/leaves, but cannot modify Host.
    */
   canManageUser(targetUser: User): boolean {
     if (this.isHost()) return true;
     if (this.isHr()) {
-      return targetUser.role !== 'super_admin';
+      return targetUser.role !== 'HOST' && (targetUser.role as string) !== 'super_admin';
     }
     return false;
   }
 
-  login(identifier: string, _password?: string): boolean {
-    const users = this.dataService.getUsersSnapshot();
+  /**
+   * Protected Host Login
+   * Accessible only via private non-public route /host-portal
+   */
+  loginHost(accessKey: string, identifier?: string): { success: boolean; message?: string } {
+    const cleanKey = accessKey.trim();
+    const config = environment.hostConfig;
+    const expectedKey = config?.accessKey || 'Host#7Clouds2026';
+    const accessCode = config?.portalAccessCode || '7CLOUDS-HOST-ACCESS';
+
+    if (cleanKey === expectedKey || cleanKey === accessCode) {
+      this.currentUserSubject.next(PRIVATE_HOST_USER);
+      localStorage.setItem(this.CURRENT_USER_KEY, 'host');
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      message: 'Invalid Host Credentials. Access to Master Console denied.'
+    };
+  }
+
+  /**
+   * Public Employee Login
+   * Accessible via public /login page
+   */
+  loginEmployee(identifier: string, password: string): { success: boolean; message?: string } {
     const clean = identifier.trim().toLowerCase();
-    // Allow login by email or phone number
+    const cleanPass = password.trim();
+
+    // Prevent Host credentials from logging in via public form
+    if (clean === (environment.hostConfig?.secretIdentifier || '').toLowerCase()) {
+      return {
+        success: false,
+        message: 'Host accounts must access via the Private Host Portal.'
+      };
+    }
+
+    const users = this.dataService.getUsersSnapshot();
     const user = users.find(
-      u => u.email.toLowerCase() === clean || u.phone === clean
+      u => u.email.toLowerCase() === clean || u.phone.trim() === clean
     );
 
-    if (user) {
-      if (user.status === 'inactive') {
-        throw new Error('This account has been deactivated. Please contact the Host or Studio HR.');
-      }
-      this.currentUserSubject.next(user);
-      localStorage.setItem(this.CURRENT_USER_KEY, user.id);
-      return true;
+    if (!user) {
+      return {
+        success: false,
+        message: 'No registered employee account found with this email or phone number. Click Create Account to register.'
+      };
     }
-    return false;
+
+    if (user.status === 'pending_approval') {
+      return {
+        success: false,
+        message: 'Your account is pending Host approval. Please wait for the Host to verify and approve your registration.'
+      };
+    }
+
+    if (user.status === 'rejected') {
+      return {
+        success: false,
+        message: `Your registration request was not approved (${user.rejectedReason || 'Application rejected'}). Please contact studio management.`
+      };
+    }
+
+    if (user.status === 'inactive') {
+      return {
+        success: false,
+        message: 'This account has been deactivated. Please contact studio HR or the Host.'
+      };
+    }
+
+    // Verify Password
+    if (user.passwordHash && !verifyPassword(cleanPass, user.passwordHash)) {
+      return {
+        success: false,
+        message: 'Incorrect password. Please verify your credentials and try again.'
+      };
+    }
+
+    this.currentUserSubject.next(user);
+    localStorage.setItem(this.CURRENT_USER_KEY, user.id);
+    return { success: true };
   }
 
-  switchUser(userId: string): void {
-    const users = this.dataService.getUsersSnapshot();
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      this.currentUserSubject.next(user);
-      localStorage.setItem(this.CURRENT_USER_KEY, user.id);
+  /**
+   * Backwards-compatible generic login used by services
+   */
+  login(identifier: string, password?: string): boolean {
+    if (this.isHost()) return true;
+    const res = this.loginEmployee(identifier, password || 'password123');
+    if (!res.success) {
+      throw new Error(res.message);
     }
+    return true;
   }
 
   logout(): void {
@@ -124,7 +227,9 @@ export class AuthService {
     if (!current) return;
     const updated: User = { ...current, ...partial };
     this.currentUserSubject.next(updated);
-    this.dataService.updateUser(updated);
+    if (!this.isHost()) {
+      this.dataService.updateUser(updated);
+    }
   }
 
   changePassword(newPassword: string): void {
@@ -132,10 +237,12 @@ export class AuthService {
     if (!current) return;
     const updated: User = {
       ...current,
-      passwordHash: 'hash_' + btoa(newPassword).substring(0, 12),
+      passwordHash: hashPassword(newPassword),
       firstLoginRequired: false
     };
     this.currentUserSubject.next(updated);
-    this.dataService.updateUser(updated);
+    if (!this.isHost()) {
+      this.dataService.updateUser(updated);
+    }
   }
 }

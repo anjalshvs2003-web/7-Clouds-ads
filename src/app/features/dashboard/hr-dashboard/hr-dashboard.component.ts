@@ -36,7 +36,7 @@ import { Subscription } from 'rxjs';
           <div>
             <div class="flex items-center gap-2 mb-1.5">
               <span class="px-2.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-mono text-[10px] font-bold uppercase tracking-wider">
-                {{ isHost ? 'Host & Studio Direction' : 'HR Operations Hub' }}
+                {{ isHost ? 'Host Master Console' : 'HR Operations Hub' }}
               </span>
               <span class="text-text-muted">•</span>
               <span class="text-xs font-mono text-text-muted">{{ todayDateFormatted }} (IST)</span>
@@ -50,11 +50,15 @@ import { Subscription } from 'rxjs';
           </div>
 
           <div class="flex items-center gap-2.5 flex-wrap">
-            <a routerLink="/attendance" class="btn-primary text-xs">
+            <a routerLink="/employees" class="btn-primary text-xs flex items-center gap-1.5">
+              <app-icon name="users" [size]="14"></app-icon>
+              <span>Manage Staff</span>
+            </a>
+            <a routerLink="/attendance" class="btn-secondary text-xs flex items-center gap-1.5">
               <app-icon name="clock" [size]="14"></app-icon>
               <span>Live Attendance</span>
             </a>
-            <a routerLink="/tasks" class="btn-secondary text-xs">
+            <a routerLink="/tasks" class="btn-secondary text-xs flex items-center gap-1.5">
               <app-icon name="check-square" [size]="14"></app-icon>
               <span>Task Board</span>
             </a>
@@ -62,13 +66,69 @@ import { Subscription } from 'rxjs';
         </div>
       </div>
 
-      <!-- KEY 7 METRICS DISPLAY (As specified in requirement 5) -->
+      <!-- ================= HOST SPECIFIC: PENDING REGISTRATIONS TERMINAL ================= -->
+      <div *ngIf="isHost && pendingRegistrations.length > 0" class="glass-panel p-5 sm:p-6 border border-amber-500/40 relative overflow-hidden">
+        <div class="glow-border-blue"></div>
+
+        <div class="flex items-center justify-between pb-3 border-b border-surface-border mb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="w-3 h-3 rounded-full bg-amber-400 animate-ping"></div>
+            <h2 class="text-sm sm:text-base font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+              <span>Pending Registrations Awaiting Host Approval</span>
+              <span class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs">
+                {{ pendingRegistrations.length }}
+              </span>
+            </h2>
+          </div>
+          <a routerLink="/employees" class="text-xs text-amber-300 hover:underline font-mono">
+            View All in Staff Portal →
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div
+            *ngFor="let applicant of pendingRegistrations"
+            class="p-4 rounded-xl bg-surface-secondary/70 border border-amber-500/30 flex flex-col justify-between space-y-3"
+          >
+            <div class="flex items-center gap-3">
+              <img [src]="applicant.avatar" [alt]="applicant.name" class="w-10 h-10 rounded-xl object-cover ring-1 ring-amber-400/40" />
+              <div class="min-w-0">
+                <div class="font-bold text-white text-xs truncate">{{ applicant.name }}</div>
+                <div class="text-[11px] text-amber-300 truncate">{{ applicant.designation }}</div>
+                <div class="text-[10px] text-text-muted font-mono">{{ applicant.phone }} • {{ applicant.employeeId }}</div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                (click)="approveRegistration(applicant)"
+                class="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-white font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1"
+              >
+                <app-icon name="check-circle" [size]="13"></app-icon>
+                <span>Approve</span>
+              </button>
+
+              <button
+                type="button"
+                (click)="rejectRegistration(applicant)"
+                class="py-1.5 px-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1"
+              >
+                <app-icon name="x-circle" [size]="13"></app-icon>
+                <span>Reject</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KEY 7 METRICS DISPLAY (Excludes Host from Employee Counts) -->
       <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <!-- 1. Total Employees -->
         <div class="glass-panel p-3.5 text-center">
           <div class="text-[10px] font-mono text-text-muted uppercase">Total Staff</div>
           <div class="text-2xl font-extrabold text-white font-mono mt-1">{{ totalStaffCount }}</div>
-          <div class="text-[9px] text-text-secondary mt-0.5">Active team</div>
+          <div class="text-[9px] text-text-secondary mt-0.5">Approved team</div>
         </div>
 
         <!-- 2. Currently Checked In -->
@@ -130,6 +190,10 @@ import { Subscription } from 'rxjs';
             </a>
           </div>
 
+          <div *ngIf="staffRoster.length === 0" class="py-8 text-center text-xs text-text-muted">
+            No approved staff members registered yet.
+          </div>
+
           <div class="space-y-2.5">
             <div
               *ngFor="let member of staffRoster"
@@ -142,9 +206,9 @@ import { Subscription } from 'rxjs';
                     <span>{{ member.name }}</span>
                     <span
                       class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase"
-                      [ngClass]="member.role === 'super_admin' ? 'bg-gradient-to-r from-violet-600 to-electric text-white' : (member.role === 'hr_admin' ? 'bg-violet-500/20 text-violet-300' : 'bg-surface-tertiary text-text-muted')"
+                      [ngClass]="member.role === 'HR ADMIN' || member.role === 'hr_admin' ? 'bg-violet-500/20 text-violet-300' : 'bg-surface-tertiary text-text-muted'"
                     >
-                      {{ member.role === 'super_admin' ? 'HOST' : (member.role === 'hr_admin' ? 'HR' : member.employeeId) }}
+                      {{ member.role === 'HR ADMIN' || member.role === 'hr_admin' ? 'HR ADMIN' : member.employeeId }}
                     </span>
                   </div>
                   <div class="text-[11px] text-text-secondary truncate">{{ member.designation }} • {{ member.phone }}</div>
@@ -242,8 +306,10 @@ export class HrDashboardComponent implements OnInit, OnDestroy {
   isHost = false;
   todayDateFormatted = '';
 
+  pendingRegistrations: User[] = [];
+
   // 7 Specified Metrics
-  totalStaffCount = 5;
+  totalStaffCount = 0;
   checkedInCount = 0;
   onLeaveCount = 0;
   notCheckedInCount = 0;
@@ -291,7 +357,10 @@ export class HrDashboardComponent implements OnInit, OnDestroy {
         this.isHost = this.authService.isHost();
       }),
       this.dataService.getUsers().subscribe(users => {
-        const activeUsers = users.filter(u => u.status === 'active');
+        // Exclude Host permanently from staff roster & counts
+        const staff = users.filter(u => u.role !== 'HOST' && (u.role as string) !== 'super_admin');
+        this.pendingRegistrations = staff.filter(u => u.status === 'pending_approval');
+        const activeUsers = staff.filter(u => u.status === 'active');
         this.totalStaffCount = activeUsers.length;
         this.buildRoster(activeUsers, this.dataService.getAttendanceSnapshot());
       }),
@@ -300,7 +369,8 @@ export class HrDashboardComponent implements OnInit, OnDestroy {
         const todayCheckedIn = att.filter(r => r.date === today && r.checkInTime);
         this.checkedInCount = todayCheckedIn.length;
         this.notCheckedInCount = Math.max(0, this.totalStaffCount - this.checkedInCount);
-        this.buildRoster(this.dataService.getUsersSnapshot(), att);
+        const users = this.dataService.getUsersSnapshot().filter(u => u.role !== 'HOST' && (u.role as string) !== 'super_admin' && u.status === 'active');
+        this.buildRoster(users, att);
       }),
       this.leaveService.getAllLeaves().subscribe(leaves => {
         this.pendingLeaves = leaves.filter(l => l.status === 'Pending');
@@ -336,6 +406,16 @@ export class HrDashboardComponent implements OnInit, OnDestroy {
         todayRecord: rec
       };
     });
+  }
+
+  approveRegistration(applicant: User): void {
+    this.dataService.approveRegistration(applicant.id);
+    this.toastService.success(`Approved ${applicant.name}! Account is now active.`);
+  }
+
+  rejectRegistration(applicant: User): void {
+    this.dataService.rejectRegistration(applicant.id, 'Host rejected registration');
+    this.toastService.warning(`Registration for ${applicant.name} rejected.`);
   }
 
   approveLeave(req: LeaveRequest): void {
